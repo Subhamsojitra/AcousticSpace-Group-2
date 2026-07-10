@@ -1,11 +1,11 @@
 import React from 'react';
 import { 
-  UploadCloud, 
   FileAudio, 
   Activity, 
   Info, 
   Shield 
 } from 'lucide-react';
+import AudioUpload from '../components/AudioUpload';
 
 export default function Dashboard() {
   return (
@@ -56,40 +56,8 @@ export default function Dashboard() {
         {/* Left Column: Upload Dropzone & Waveform visualizer */}
         <div className="xl:col-span-2 space-y-8">
           
-          {/* Static Audio Upload Card */}
-          <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden">
-            <div className="p-6 border-b border-cyber-border flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UploadCloud className="text-cyber-cyan" size={18} />
-                <h2 className="font-display font-semibold text-slate-200">
-                  Audio Upload Portal
-                </h2>
-              </div>
-              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                File Vault Gateway
-              </span>
-            </div>
-
-            <div className="p-8">
-              {/* Drag and Drop Box */}
-              <div className="border border-dashed border-slate-700/60 rounded-xl bg-slate-950/30 p-10 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-cyber-cyan/40 hover:bg-slate-950/50 transition-all duration-300">
-                <div className="p-4 rounded-full bg-cyber-cyan-glow text-cyber-cyan border border-cyber-cyan/10 mb-4 group-hover:scale-105 transition-transform duration-300">
-                  <UploadCloud size={32} />
-                </div>
-                <h3 className="font-display font-semibold text-slate-200 text-sm">
-                  Drag and drop audio file here
-                </h3>
-                <p className="text-xs text-slate-400 mt-1 max-w-xs font-mono">
-                  or browse your local filesystem
-                </p>
-                <div className="mt-4 flex items-center gap-2 text-[10px] text-slate-500 font-mono border border-cyber-border bg-slate-950/80 px-2 py-1 rounded">
-                  <span>WAV, MP3 formats</span>
-                  <span className="w-1 h-1 rounded-full bg-slate-800"></span>
-                  <span>Max 15MB</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Audio Upload Portal */}
+          <AudioUpload />
 
           {/* Static Waveform Visualizer Placeholder */}
           <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden">

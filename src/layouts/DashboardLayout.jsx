@@ -6,7 +6,6 @@ import {
   History, 
   Settings, 
   Terminal, 
-  Cpu, 
   Database, 
   Radio,
   Cpu as CpuIcon
