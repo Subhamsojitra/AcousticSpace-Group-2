@@ -3,8 +3,18 @@ import { UploadCloud, FileAudio, Trash2, ShieldAlert } from 'lucide-react';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { formatFileSize } from '../utils/fileValidation';
 
-export default function AudioUpload() {
-  const { file, error, handleFileChange, removeFile } = useFileUpload();
+export default function AudioUpload({
+  file: propFile,
+  error: propError,
+  handleFileChange: propHandleFileChange,
+  removeFile: propRemoveFile,
+} = {}) {
+  const localState = useFileUpload();
+
+  const file = propFile !== undefined ? propFile : localState.file;
+  const error = propError !== undefined ? propError : localState.error;
+  const handleFileChange = propHandleFileChange !== undefined ? propHandleFileChange : localState.handleFileChange;
+  const removeFile = propRemoveFile !== undefined ? propRemoveFile : localState.removeFile;
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 

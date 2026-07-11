@@ -1,13 +1,16 @@
 import React from 'react';
 import { 
   FileAudio, 
-  Activity, 
   Info, 
   Shield 
 } from 'lucide-react';
 import AudioUpload from '../components/AudioUpload';
+import WaveformViewer from '../components/WaveformViewer';
+import { useFileUpload } from '../hooks/useFileUpload';
 
 export default function Dashboard() {
+  const fileUpload = useFileUpload();
+
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Page Header */}
@@ -57,53 +60,15 @@ export default function Dashboard() {
         <div className="xl:col-span-2 space-y-8">
           
           {/* Audio Upload Portal */}
-          <AudioUpload />
+          <AudioUpload 
+            file={fileUpload.file}
+            error={fileUpload.error}
+            handleFileChange={fileUpload.handleFileChange}
+            removeFile={fileUpload.removeFile}
+          />
 
-          {/* Static Waveform Visualizer Placeholder */}
-          <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden">
-            <div className="p-6 border-b border-cyber-border flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity className="text-cyber-cyan" size={18} />
-                <h2 className="font-display font-semibold text-slate-200">
-                  Spectral Waveform Analyzer
-                </h2>
-              </div>
-              <span className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-                STANDBY
-              </span>
-            </div>
-
-            <div className="p-8 bg-slate-950/50 relative overflow-hidden flex items-center justify-center min-h-[160px]">
-              {/* Static Waveform Mock (Muted Mapped Bars) */}
-              <svg className="w-full h-32 text-slate-800/25" viewBox="0 0 400 100" preserveAspectRatio="none">
-                {[...Array(60)].map((_, i) => {
-                  const x = 5 + i * 6.5;
-                  const height = 15 + Math.sin(x * 0.05) * 8; // Muted flat waveform
-                  const y = 50 - height / 2;
-                  
-                  return (
-                    <rect
-                      key={i}
-                      x={x}
-                      y={y}
-                      width="3"
-                      height={height}
-                      rx="1.5"
-                      className="fill-slate-800/40"
-                    />
-                  );
-                })}
-              </svg>
-
-              {/* Watermark Centered Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest border border-slate-800 bg-slate-950 px-3 py-1.5 rounded">
-                  Awaiting Audio Upload
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Dynamic Waveform Visualizer */}
+          <WaveformViewer file={fileUpload.file} />
 
         </div>
 
