@@ -1,61 +1,79 @@
+import os
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Import API routers
 from app.api.upload import router as upload_router
 from app.api.predict import router as predict_router
 from app.api.analysis import router as analysis_router
 from app.api.history import router as history_router
 
+from app.core.config import settings
+from app.core.logger import logger
+from app.core.middleware import ExceptionLoggingMiddleware, RequestLoggingMiddleware
+from app.database.db import Base, engine
+from app.services.inference import load_ast_model, load_cnn_model
 
 # -----------------------------
 # Application Lifecycle
 # -----------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Startup and shutdown events.
-    """
+    """Startup and shutdown events."""
 
-    print("🚀 AcousticSpace Backend Started")
+    logger.info("AcousticSpace backend starting...")
 
-    # Future:
-    # Load ML model here
-    # Create database tables
-    # Check required folders
+    # Ensure required runtime folders exist.
+    # (Config paths are relative to repo root in this project.)
+    import os
+    from pathlib import Path
+
+    for p in [settings.UPLOAD_DIR, settings.FEATURE_DIR, settings.MODEL_DIR, settings.LOG_DIR]:
+        Path(p).mkdir(parents=True, exist_ok=True)
+
+    # Initialize DB tables.
+    Base.metadata.create_all(bind=engine)
+
+    # Prepare future ML model integration hooks (no weights loaded here).
+    app.state.cnn_model = load_cnn_model()
+    app.state.ast_model = load_ast_model()
 
     yield
 
-    print("🛑 AcousticSpace Backend Stopped")
+    logger.info("AcousticSpace backend stopped.")
 
 
 # -----------------------------
 # FastAPI App
 # -----------------------------
 app = FastAPI(
-    title="AcousticSpace API",
+    title=settings.APP_NAME,
     description="Backend API for Deepfake Audio Detection using Room Impulse Response (RIR)",
-    version="1.0.0",
+    version=settings.APP_VERSION,
     lifespan=lifespan,
 )
-
 
 # -----------------------------
 # CORS Configuration
 # -----------------------------
+# NOTE: keep origins configurable for production deployments.
+allow_origins = [o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # React (Vite)
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# -----------------------------
+# Middleware
+# -----------------------------
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(ExceptionLoggingMiddleware)
 
 # -----------------------------
 # Health Check
@@ -65,9 +83,10 @@ async def health_check():
     return {
         "status": "running",
         "project": "AcousticSpace",
-        "version": "1.0.0",
-        "message": "Backend is running successfully."
+        "version": settings.APP_VERSION,
+        "message": "Backend is running successfully.",
     }
+
 
 
 # -----------------------------

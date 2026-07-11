@@ -25,7 +25,7 @@ from app.core.logger import log_error, log_info
 def validate_features(
     acoustic_features: Dict,
     rir_features: Dict,
-    breathing_features: Dict
+    breathing_features: Dict,
 ) -> bool:
     """
     Validate extracted features before inference.
@@ -46,8 +46,8 @@ def validate_features(
 def predict_audio(
     acoustic_features: Dict,
     rir_features: Dict,
-    breathing_features: Dict
-):
+    breathing_features: Dict,
+) -> Dict:
     """
     Perform inference.
 
