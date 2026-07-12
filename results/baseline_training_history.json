@@ -1,0 +1,102 @@
+[
+  {
+    "epoch": 1,
+    "train_loss": 0.7489561779158456,
+    "train_acc": 0.8,
+    "val_loss": 0.6860920429229737,
+    "val_acc": 0.3333333333333333,
+    "bonafide_recall": 1.0,
+    "spoof_recall": 0.2857142857142857,
+    "balanced_score": 0.6428571428571428
+  },
+  {
+    "epoch": 2,
+    "train_loss": 0.6988679102488926,
+    "train_acc": 0.45,
+    "val_loss": 0.6989413817723592,
+    "val_acc": 0.2,
+    "bonafide_recall": 1.0,
+    "spoof_recall": 0.14285714285714285,
+    "balanced_score": 0.5714285714285714
+  },
+  {
+    "epoch": 3,
+    "train_loss": 0.6571739418166024,
+    "train_acc": 0.7285714285714285,
+    "val_loss": 0.542756583293279,
+    "val_acc": 0.7,
+    "bonafide_recall": 0.5,
+    "spoof_recall": 0.7142857142857143,
+    "balanced_score": 0.6071428571428572
+  },
+  {
+    "epoch": 4,
+    "train_loss": 0.6288823962211609,
+    "train_acc": 0.7142857142857143,
+    "val_loss": 0.5832156578699748,
+    "val_acc": 0.5333333333333333,
+    "bonafide_recall": 1.0,
+    "spoof_recall": 0.5,
+    "balanced_score": 0.75
+  },
+  {
+    "epoch": 5,
+    "train_loss": 0.5956141608101981,
+    "train_acc": 0.6428571428571429,
+    "val_loss": 0.46483258008956907,
+    "val_acc": 0.8,
+    "bonafide_recall": 1.0,
+    "spoof_recall": 0.7857142857142857,
+    "balanced_score": 0.8928571428571428
+  },
+  {
+    "epoch": 6,
+    "train_loss": 0.5969506476606642,
+    "train_acc": 0.7642857142857142,
+    "val_loss": 0.48274791638056436,
+    "val_acc": 0.7333333333333333,
+    "bonafide_recall": 1.0,
+    "spoof_recall": 0.7142857142857143,
+    "balanced_score": 0.8571428571428572
+  },
+  {
+    "epoch": 7,
+    "train_loss": 0.5359425118991307,
+    "train_acc": 0.7785714285714286,
+    "val_loss": 0.48514976501464846,
+    "val_acc": 0.7333333333333333,
+    "bonafide_recall": 0.5,
+    "spoof_recall": 0.75,
+    "balanced_score": 0.625
+  },
+  {
+    "epoch": 8,
+    "train_loss": 0.5442354508808681,
+    "train_acc": 0.6928571428571428,
+    "val_loss": 0.4868787944316864,
+    "val_acc": 0.7333333333333333,
+    "bonafide_recall": 1.0,
+    "spoof_recall": 0.7142857142857143,
+    "balanced_score": 0.8571428571428572
+  },
+  {
+    "epoch": 9,
+    "train_loss": 0.543346860579082,
+    "train_acc": 0.8071428571428572,
+    "val_loss": 0.45997719566027323,
+    "val_acc": 0.7333333333333333,
+    "bonafide_recall": 1.0,
+    "spoof_recall": 0.7142857142857143,
+    "balanced_score": 0.8571428571428572
+  },
+  {
+    "epoch": 10,
+    "train_loss": 0.5550514306340899,
+    "train_acc": 0.8357142857142857,
+    "val_loss": 0.45432947278022767,
+    "val_acc": 0.8,
+    "bonafide_recall": 1.0,
+    "spoof_recall": 0.7857142857142857,
+    "balanced_score": 0.8928571428571428
+  }
+]
