@@ -35,7 +35,7 @@ The AcousticSpace frontend is a high-fidelity, cyberpunk-themed web console that
 - **Dashboard Integration**: Replaced the static placeholder waveform inside `Dashboard.jsx` with the dynamic client-side `WaveformViewer`.
 - **Backend-Ready Component Architecture**: Designed `WaveformViewer` to support optional external parameters (`externalWaveformData`, `externalLoading`, `externalError`) to allow future integration with FastAPI backend endpoints with zero layout refactoring.
 
-## Current Frontend Status
+## Current Frontend Status:
 The frontend is fully functional in standalone client-side mode and currently supports:
 - **Dashboard Layout**: Fully styled and responsive cyber-security theme shell.
 - **Audio Upload**: Interactive drag-and-drop or system file browser portal.
@@ -48,8 +48,8 @@ The frontend is fully functional in standalone client-side mode and currently su
 > Backend integration is intentionally pending and will be connected once the FastAPI endpoints are available.
 
 ## Next Planned Milestones
-- **API Service Layer**: Construct a communication gateway for HTTP and WebSockets backend pipelines.
-- **Backend Integration**: Connect audio analysis triggers to the FastAPI server.
-- **Analysis Result Components**: Integrate visual report graphs (e.g. echo coherence percentage bars) and classification status badges.
-- **Processing States**: Add scanning animations, loading spinners, and network status transitions.
-- **Final UI Polish**: Enhance visual layout spacing and micro-animations.
+- API Service Layer: Construct a communication gateway for HTTP and WebSockets backend pipelines.
+- Backend Integration: Connect audio analysis triggers to the FastAPI server.
+- Analysis Result Components: Integrate visual report graphs (e.g. echo coherence percentage bars) and classification status badges.
+- Processing States: Add scanning animations, loading spinners, and network status transitions.
+- Final UI Polish: Enhance visual layout spacing and micro-animations.
