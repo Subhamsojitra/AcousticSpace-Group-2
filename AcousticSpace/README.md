@@ -1,3 +1,8 @@
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green)
+![Librosa](https://img.shields.io/badge/Librosa-Audio%20Processing-orange)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-red)
+![Status](https://img.shields.io/badge/Status-Under%20Development-yellow)
 # AcousticSpace-Group-2
 # AcousticSpace Backend
 
