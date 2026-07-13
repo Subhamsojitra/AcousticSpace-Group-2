@@ -1,5 +1,6 @@
-# AcousticSpace-Group-2
 # AcousticSpace Backend
+
+Backend implementation for the **AcousticSpace-Group-2** project.
 
 Backend implementation for **AcousticSpace**, an AI-powered Deepfake Audio Detection platform that analyzes uploaded audio using acoustic features extracted with Librosa and serves results through a FastAPI REST API.
 
