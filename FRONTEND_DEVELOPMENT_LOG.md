@@ -35,21 +35,48 @@ The AcousticSpace frontend is a high-fidelity, cyberpunk-themed web console that
 - **Dashboard Integration**: Replaced the static placeholder waveform inside `Dashboard.jsx` with the dynamic client-side `WaveformViewer`.
 - **Backend-Ready Component Architecture**: Designed `WaveformViewer` to support optional external parameters (`externalWaveformData`, `externalLoading`, `externalError`) to allow future integration with FastAPI backend endpoints with zero layout refactoring.
 
-## Current Frontend Status:
-The frontend is fully functional in standalone client-side mode and currently supports:
-- **Dashboard Layout**: Fully styled and responsive cyber-security theme shell.
-- **Audio Upload**: Interactive drag-and-drop or system file browser portal.
-- **File Validation**: Immediate check of mime type, extension, and file size with warning banners.
-- **Waveform Visualization**: Real-time client-side audio decoding and SVG bar waveform representation with deterministic fallbacks.
-- **Responsive UI**: Fluid styling leveraging CSS grid, flex layouts, and custom theme tokens.
-- **Modular React Architecture**: Loose coupling between components, hooks, utilities, and page views.
+### Day 4 – Backend API Integration Preparation
 
-> [!NOTE]
-> Backend integration is intentionally pending and will be connected once the FastAPI endpoints are available.
+#### Objective
+Prepare the frontend architecture for backend integration by implementing a reusable API service layer based on the finalized FastAPI contract, while keeping the existing UI unchanged.
 
-## Next Planned Milestones
-- API Service Layer: Construct a communication gateway for HTTP and WebSockets backend pipelines.
-- Backend Integration: Connect audio analysis triggers to the FastAPI server.
-- Analysis Result Components: Integrate visual report graphs (e.g. echo coherence percentage bars) and classification status badges.
-- Processing States: Add scanning animations, loading spinners, and network status transitions.
-- Final UI Polish: Enhance visual layout spacing and micro-animations.
+#### Work Completed
+- Added a root `.env` file containing `VITE_API_BASE_URL=http://127.0.0.1:8000`.
+- Created `src/config/apiConfig.js` to expose the backend base URL using Vite environment variables with a fallback.
+- Created `src/services/api.js` as a centralized API service layer using the native Fetch API.
+- Implemented reusable service functions:
+  - `uploadAudio(file)`
+  - `analyzeAudio(fileId)`
+  - `getHistory()`
+- Added a custom `ApiError` class for centralized HTTP error handling (400, 404, 422, 500).
+- Updated `Dashboard.jsx` by preparing frontend state (`loading`, `analysisResult`, and `error`) for future backend integration without changing the UI.
+
+#### Backend Contract
+Prepared the frontend according to the backend API:
+- POST `/upload`
+- POST `/analysis`
+- GET `/history`
+
+The service layer is designed to consume the agreed JSON response structure and can be connected directly once the backend is available.
+
+#### Verification
+- Successfully executed `npm run build`.
+- Production build completed without compilation errors.
+- Verified there are no unresolved imports or build issues.
+
+## Current Frontend Progress
+Completed:
+- React + Vite project setup
+- Tailwind CSS v4 configuration
+- Dashboard layout
+- Audio Upload component
+- File validation
+- Waveform Viewer
+- Backend API service layer
+
+## Next Steps
+- Connect upload workflow with backend endpoints.
+- Trigger analysis requests after successful upload.
+- Display real backend responses in the Results UI.
+- Integrate loading, success, and error states.
+- Complete end-to-end frontend testing with the FastAPI backend.
