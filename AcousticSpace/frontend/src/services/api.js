@@ -36,7 +36,7 @@ async function handleResponse(response) {
 /**
  * Uploads an audio file to the backend.
  * @param {File} file - The file object to upload.
- * @returns {Promise<Object>} The upload result containing file_id and filename.
+ * @returns {Promise<Object>} The upload result containing file_path, file_name, etc.
  */
 export async function uploadAudio(file) {
   if (!file) {
@@ -46,7 +46,7 @@ export async function uploadAudio(file) {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/upload`, {
+  const response = await fetch(`${API_BASE_URL}/api/upload/`, {
     method: 'POST',
     body: formData,
     // Note: Do not set Content-Type header; the browser will set it with the multipart boundary.
@@ -56,21 +56,42 @@ export async function uploadAudio(file) {
 }
 
 /**
- * Starts analysis on an uploaded audio file.
- * @param {string} fileId - The ID of the uploaded file.
+ * Starts analysis on an uploaded audio file path.
+ * @param {string} filePath - The server-side path of the uploaded file.
  * @returns {Promise<Object>} The analysis results.
  */
-export async function analyzeAudio(fileId) {
-  if (!fileId) {
-    throw new Error('No file_id provided for analysis.');
+export async function analyzeAudio(filePath) {
+  if (!filePath) {
+    throw new Error('No file_path provided for analysis.');
   }
 
-  const response = await fetch(`${API_BASE_URL}/analysis`, {
+  const response = await fetch(`${API_BASE_URL}/api/analysis/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ file_id: fileId }),
+    body: JSON.stringify({ file_path: filePath }),
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Predicts whether an uploaded audio file is Real or Fake.
+ * @param {string} filePath - The server-side path of the uploaded file.
+ * @returns {Promise<Object>} The prediction results.
+ */
+export async function predictAudio(filePath) {
+  if (!filePath) {
+    throw new Error('No file_path provided for prediction.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/predict/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ file_path: filePath }),
   });
 
   return handleResponse(response);
@@ -78,12 +99,13 @@ export async function analyzeAudio(fileId) {
 
 /**
  * Retrieves the history of analyses.
- * @returns {Promise<Array>} List of previous analyses.
+ * @returns {Promise<Object>} Object containing the array of previous analyses.
  */
 export async function getHistory() {
-  const response = await fetch(`${API_BASE_URL}/history`, {
+  const response = await fetch(`${API_BASE_URL}/api/history/`, {
     method: 'GET',
   });
 
   return handleResponse(response);
 }
+
