@@ -7,7 +7,7 @@ import {
 import AudioUpload from '../components/AudioUpload';
 import WaveformViewer from '../components/WaveformViewer';
 import { useFileUpload } from '../hooks/useFileUpload';
-import { uploadAudio, analyzeAudio, predictAudio } from '../services/api';
+import { uploadAudio } from '../services/api';
 import { API_BASE_URL } from '../config/apiConfig';
 
 export default function Dashboard() {
@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [scannerLoading, setScannerLoading] = useState(true);
   const [pipelineMessage, setPipelineMessage] = useState('Awaiting Audio Upload');
   const [uploading, setUploading] = useState(false);
+  const [fileId, setFileId] = useState(null);
 
   const [prediction, setPrediction] = useState(null);
   const [confidence, setConfidence] = useState(null);
@@ -45,7 +46,7 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Trigger backend upload, analysis, and prediction pipeline when a valid file is selected
+  // Trigger backend upload pipeline when a valid file is selected
   useEffect(() => {
     if (!file) {
       setPrediction(null);
@@ -53,6 +54,7 @@ export default function Dashboard() {
       setAcousticFeatures(null);
       setRirFeatures(null);
       setBreathingAnalysis(null);
+      setFileId(null);
       setPipelineMessage('Awaiting Audio Upload');
       return;
     }
@@ -66,36 +68,20 @@ export default function Dashboard() {
       setAcousticFeatures(null);
       setRirFeatures(null);
       setBreathingAnalysis(null);
+      setFileId(null);
 
       try {
         // Step 1: Upload the file
         const uploadResult = await uploadAudio(file);
         if (!active) return;
 
-        const { file_path } = uploadResult;
-        setPipelineMessage('De-noising RIR reflections & extracting features...');
-
-        // Step 2: Extract acoustic & RIR features
-        const analysisResult = await analyzeAudio(file_path);
-        if (!active) return;
-
-        setAcousticFeatures(analysisResult.features);
-        setRirFeatures(analysisResult.rir_features);
-        setBreathingAnalysis(analysisResult.breathing_analysis);
-
-        setPipelineMessage('Running AST classifier prediction...');
-
-        // Step 3: Classify Deepfake vs Real
-        const predictionResult = await predictAudio(file_path);
-        if (!active) return;
-
-        setPrediction(predictionResult.prediction);
-        setConfidence(predictionResult.confidence);
-        setPipelineMessage('Scan completed successfully.');
+        const fileIdVal = uploadResult.file_name || uploadResult.file_path || uploadResult.file_id;
+        setFileId(fileIdVal);
+        setPipelineMessage('Upload completed successfully.');
       } catch (err) {
-        console.error('Scan pipeline failure:', err);
+        console.error('Upload failure:', err);
         if (active) {
-          setPipelineMessage('Scan failed.');
+          setPipelineMessage('Upload failed.');
           // Pass the error message to the upload component so it shows up in the warning banner
           setError(err.message || 'An unexpected error occurred during processing.');
         }
@@ -146,7 +132,7 @@ export default function Dashboard() {
       {/* Metric Cards Grid */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Pipeline State', value: uploading ? 'SCANNING' : fileUpload.file ? 'COMPLETED' : 'STANDBY', change: pipelineMessage, theme: uploading ? 'cyan' : fileUpload.file ? 'green' : 'gray' },
+          { label: 'Pipeline State', value: uploading ? 'UPLOADING' : fileId ? 'UPLOADED' : 'STANDBY', change: pipelineMessage, theme: uploading ? 'cyan' : fileId ? 'green' : 'gray' },
           { label: 'Verification', value: prediction ? prediction.toUpperCase() : '—', change: prediction ? `Confidence: ${(confidence * 100).toFixed(1)}%` : 'Awaiting classification', theme: prediction === 'Real' ? 'green' : prediction === 'Fake' ? 'rose' : 'gray' },
           { label: 'Classification F1', value: '98.4%', change: 'AST-v2 model spec', theme: 'cyan' },
           { label: 'Scanner Status', value: scannerValue, change: scannerChange, theme: scannerOnline ? 'cyan' : 'amber' }
@@ -185,6 +171,8 @@ export default function Dashboard() {
             error={error}
             handleFileChange={handleFileChange}
             removeFile={removeFile}
+            uploading={uploading}
+            fileId={fileId}
           />
 
           {/* Dynamic Waveform Visualizer */}

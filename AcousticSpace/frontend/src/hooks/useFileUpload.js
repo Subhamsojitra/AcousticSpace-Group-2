@@ -32,5 +32,6 @@ export const useFileUpload = () => {
     error,
     handleFileChange,
     removeFile,
+    setError,
   };
 };

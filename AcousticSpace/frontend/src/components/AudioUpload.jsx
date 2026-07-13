@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { UploadCloud, FileAudio, Trash2, ShieldAlert } from 'lucide-react';
+import { UploadCloud, FileAudio, Trash2, ShieldAlert, Loader2 } from 'lucide-react';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { formatFileSize } from '../utils/fileValidation';
 
@@ -8,6 +8,8 @@ export default function AudioUpload({
   error: propError,
   handleFileChange: propHandleFileChange,
   removeFile: propRemoveFile,
+  uploading = false,
+  fileId = null,
 } = {}) {
   const localState = useFileUpload();
 
@@ -139,11 +141,23 @@ export default function AudioUpload({
           </div>
         ) : (
           /* High-Fidelity Preview Card */
-          <div className="border border-cyber-green/20 bg-slate-950/40 rounded-xl p-6 glow-shadow-green animate-fadeIn space-y-4">
+          <div className={`border bg-slate-950/40 rounded-xl p-6 glow-shadow-green animate-fadeIn space-y-4 transition-all duration-300 ${
+            uploading 
+              ? 'border-cyber-cyan/30 glow-shadow-cyan' 
+              : 'border-cyber-green/20'
+          }`}>
             <div className="flex items-center gap-4">
               {/* Decorative Audio Icon Badge */}
-              <div className="p-3 bg-cyber-green-glow text-cyber-green border border-cyber-green/20 rounded-lg shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                <FileAudio size={28} className="animate-pulse" />
+              <div className={`p-3 border rounded-lg shadow-[0_0_10px_rgba(16,185,129,0.1)] transition-all ${
+                uploading 
+                  ? 'bg-cyber-cyan-glow text-cyber-cyan border-cyber-cyan/20 animate-pulse' 
+                  : 'bg-cyber-green-glow text-cyber-green border-cyber-green/20'
+              }`}>
+                {uploading ? (
+                  <Loader2 size={28} className="animate-spin" />
+                ) : (
+                  <FileAudio size={28} className="animate-pulse" />
+                )}
               </div>
               
               {/* General Metadata Info */}
@@ -158,6 +172,16 @@ export default function AudioUpload({
                   <span className="text-[11px] font-mono text-slate-400">
                     {formatFileSize(file.size)}
                   </span>
+                  {uploading && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-cyber-cyan-glow text-cyber-cyan border border-cyber-cyan/20 animate-pulse">
+                      UPLOADING...
+                    </span>
+                  )}
+                  {fileId && !uploading && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-cyber-green-glow text-cyber-green border border-cyber-green/20">
+                      SECURED
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -165,7 +189,10 @@ export default function AudioUpload({
               <button
                 type="button"
                 onClick={removeFile}
-                className="p-2.5 rounded-lg border border-cyber-rose/20 bg-cyber-rose-glow text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 transition-all duration-200 cursor-pointer flex items-center justify-center"
+                disabled={uploading}
+                className={`p-2.5 rounded-lg border border-cyber-rose/20 bg-cyber-rose-glow text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 transition-all duration-200 cursor-pointer flex items-center justify-center ${
+                  uploading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
                 title="Remove File"
               >
                 <Trash2 size={16} />
@@ -179,8 +206,12 @@ export default function AudioUpload({
                 <span className="text-slate-300 block truncate">{file.type || 'audio/unknown'}</span>
               </div>
               <div className="space-y-1">
-                <span className="text-slate-500 uppercase tracking-wider block text-[9px]">Local Path Reference</span>
-                <span className="text-slate-300 block truncate">blob:acousticspace/{file.name.replace(/\s+/g, '-')}</span>
+                <span className="text-slate-500 uppercase tracking-wider block text-[9px]">
+                  {fileId ? 'Server File ID' : 'Local Path Reference'}
+                </span>
+                <span className="text-slate-300 block truncate" title={fileId || `blob:acousticspace/${file.name.replace(/\s+/g, '-')}`}>
+                  {fileId || `blob:acousticspace/${file.name.replace(/\s+/g, '-')}`}
+                </span>
               </div>
             </div>
           </div>
