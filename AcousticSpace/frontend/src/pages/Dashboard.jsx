@@ -1,10 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   FileAudio, 
   Info, 
-  Shield,
-  Activity,
-  Server
+  Shield
 } from 'lucide-react';
 import AudioUpload from '../components/AudioUpload';
 import WaveformViewer from '../components/WaveformViewer';
@@ -14,6 +12,7 @@ import { API_BASE_URL } from '../config/apiConfig';
 
 export default function Dashboard() {
   const fileUpload = useFileUpload();
+  const { file, error, handleFileChange, removeFile, setError } = fileUpload;
   const [scannerOnline, setScannerOnline] = useState(false);
   const [scannerLoading, setScannerLoading] = useState(true);
   const [pipelineMessage, setPipelineMessage] = useState('Awaiting Audio Upload');
@@ -21,7 +20,7 @@ export default function Dashboard() {
 
   const [prediction, setPrediction] = useState(null);
   const [confidence, setConfidence] = useState(null);
-  const [acousticFeatures, setAcousticFeatures] = useState(null);
+  const [_acousticFeatures, setAcousticFeatures] = useState(null);
   const [rirFeatures, setRirFeatures] = useState(null);
   const [breathingAnalysis, setBreathingAnalysis] = useState(null);
 
@@ -48,7 +47,7 @@ export default function Dashboard() {
 
   // Trigger backend upload, analysis, and prediction pipeline when a valid file is selected
   useEffect(() => {
-    if (!fileUpload.file) {
+    if (!file) {
       setPrediction(null);
       setConfidence(null);
       setAcousticFeatures(null);
@@ -70,7 +69,7 @@ export default function Dashboard() {
 
       try {
         // Step 1: Upload the file
-        const uploadResult = await uploadAudio(fileUpload.file);
+        const uploadResult = await uploadAudio(file);
         if (!active) return;
 
         const { file_path } = uploadResult;
@@ -98,7 +97,7 @@ export default function Dashboard() {
         if (active) {
           setPipelineMessage('Scan failed.');
           // Pass the error message to the upload component so it shows up in the warning banner
-          fileUpload.setError(err.message || 'An unexpected error occurred during processing.');
+          setError(err.message || 'An unexpected error occurred during processing.');
         }
       } finally {
         if (active) {
@@ -112,7 +111,9 @@ export default function Dashboard() {
     return () => {
       active = false;
     };
-  }, [fileUpload.file]);
+  }, [file, setError]);
+
+
 
   const scannerValue = scannerLoading ? 'Checking...' : scannerOnline ? 'Online' : 'Offline';
   const scannerChange = scannerLoading
@@ -180,14 +181,14 @@ export default function Dashboard() {
           
           {/* Audio Upload Portal */}
           <AudioUpload 
-            file={fileUpload.file}
-            error={fileUpload.error}
-            handleFileChange={fileUpload.handleFileChange}
-            removeFile={fileUpload.removeFile}
+            file={file}
+            error={error}
+            handleFileChange={handleFileChange}
+            removeFile={removeFile}
           />
 
           {/* Dynamic Waveform Visualizer */}
-          <WaveformViewer file={fileUpload.file} />
+          <WaveformViewer file={file} />
         </div>
 
         {/* Right Column: Acoustic Integrity Report */}
