@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   FileAudio, 
   Info, 
@@ -10,6 +10,9 @@ import { useFileUpload } from '../hooks/useFileUpload';
 
 export default function Dashboard() {
   const fileUpload = useFileUpload();
+  const [loading, setLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [error, setError] = useState(null);
 
   return (
     <div className="space-y-8 animate-fadeIn">
