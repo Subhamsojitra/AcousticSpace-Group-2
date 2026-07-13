@@ -3,7 +3,6 @@ data/
 *.pt
 *.bin
 results/ast_checkpoints/
-results/ast_final_model/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
