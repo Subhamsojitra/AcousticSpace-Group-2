@@ -80,3 +80,78 @@ Completed:
 - Display real backend responses in the Results UI.
 - Integrate loading, success, and error states.
 - Complete end-to-end frontend testing with the FastAPI backend.
+
+
+### Day 5 – Backend Upload API Integration
+#### Walkthrough – Day 5: Audio Upload API Integration
+
+The frontend upload workflow was successfully integrated with the backend Upload API. The existing upload interface, waveform visualization, and file validation from previous days were preserved while connecting the application to the backend service layer created during Day 4.
+
+#### Changes Made
+#### Dashboard Integration
+Connected the Dashboard upload workflow with the existing uploadAudio() service.
+Managed upload state using React hooks.
+Stored the backend-generated file_id in Dashboard state for future analysis requests.
+Added upload loading and error handling without changing the existing user interface.
+#### Audio Upload Component
+Updated the AudioUpload component to trigger backend upload after successful client-side validation.
+Preserved existing file validation rules and waveform visualization.
+Ensured only valid audio files are submitted to the backend.
+#### Upload Hook
+Updated the custom upload hook to coordinate frontend upload flow with the backend API.
+Managed upload lifecycle including:
+Upload start
+Successful response handling
+Error handling
+Loading state updates
+#### Backend Integration
+
+Integrated the frontend with the backend Upload endpoint.
+
+### Endpoint
+
+POST /upload
+
+### Request
+
+multipart/form-data
+Audio file upload
+
+### Expected Success Response
+
+{
+  "status": "success",
+  "message": "Audio uploaded successfully",
+  "file_id": "generated_file_id",
+  "filename": "sample.wav"
+}
+
+The returned file_id is stored in the frontend state and will be used during the audio analysis workflow in the next development phase.
+
+### Validation & Testing
+
+The upload workflow was verified by confirming:
+
+Audio file selection works correctly.
+Existing waveform visualization remains functional.
+Upload request is sent to the backend.
+Backend returns a valid file_id.
+Upload loading and error handling function correctly.
+Existing dashboard layout remains unchanged.
+
+### Quality Assurance
+
+### Before preparing the commit:
+
+Verified frontend build completed successfully.
+Verified linting completed with no warnings or errors.
+Removed unintended backend runtime artifacts generated during development.
+Restored unrelated backend dependency changes to keep the commit frontend-only.
+
+###  Files Updated
+AcousticSpace/frontend/src/pages/Dashboard.jsx
+AcousticSpace/frontend/src/components/AudioUpload.jsx
+AcousticSpace/frontend/src/hooks/useFileUpload.js
+
+### Outcome
+The frontend upload pipeline is now fully connected to the backend Upload API. Users can upload a valid audio file, preview its waveform, receive a backend-generated file_id, and prepare the application for the upcoming audio analysis integration in the next development phase.
