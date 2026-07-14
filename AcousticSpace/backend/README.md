@@ -49,7 +49,44 @@ backend
 ├── requirements.txt
 └── Dockerfile
 ```
+## Backend Workflow
 
+```text
+Client
+   │
+   ▼
+Upload Audio
+   │
+   ▼
+FastAPI API
+   │
+   ▼
+Audio Validation
+   │
+   ▼
+Librosa Audio Loader
+   │
+   ▼
+Audio Preprocessing
+   │
+   ▼
+Feature Extraction
+   │
+   ├── MFCC
+   ├── Mel Spectrogram
+   ├── Chroma
+   ├── Spectral Features
+   ├── RIR Features
+   └── Breathing Features
+   │
+   ▼
+Inference Service
+   │
+   ▼
+Database
+   │
+   ▼
+JSON Response
 ---
 
 # Technology Stack
