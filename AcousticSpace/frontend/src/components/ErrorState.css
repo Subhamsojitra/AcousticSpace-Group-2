@@ -1,0 +1,51 @@
+.error-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+}
+
+.error-card {
+  width: 650px;
+  padding: 50px;
+  text-align: center;
+  background: #1b2335;
+  border-radius: 16px;
+  border: 1px solid #2b3854;
+}
+
+.error-icon {
+  font-size: 70px;
+  margin-bottom: 20px;
+}
+
+.error-card h2 {
+  color: #ff6b6b;
+  margin-bottom: 20px;
+}
+
+.error-card p {
+  color: #d7d7d7;
+  font-size: 18px;
+}
+
+.error-card span {
+  display: block;
+  margin-top: 12px;
+  color: #9ca3af;
+}
+
+.error-card button {
+  margin-top: 35px;
+  padding: 14px 30px;
+  border: none;
+  border-radius: 8px;
+  background: #ef4444;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.error-card button:hover {
+  background: #dc2626;
+}

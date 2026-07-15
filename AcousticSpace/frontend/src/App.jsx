@@ -5,7 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Results from './pages/Results';
 import NotFound from './pages/NotFound';
 import LoadingState from './components/LoadingState';
-
+import ErrorState from "./components/ErrorState";
 
 function App() {
   return (
@@ -15,6 +15,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/loading" element={<LoadingState />} />
           <Route path="/results" element={<Results />} />
+          <Route path="/error" element={<ErrorState />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </DashboardLayout>
