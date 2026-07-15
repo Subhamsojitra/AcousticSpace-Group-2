@@ -7,7 +7,7 @@ import {
 import AudioUpload from '../components/AudioUpload';
 import WaveformViewer from '../components/WaveformViewer';
 import { useFileUpload } from '../hooks/useFileUpload';
-import { uploadAudio } from '../services/api';
+import { uploadAudio, analyzeAudio, predictAudio } from '../services/api';
 import { API_BASE_URL } from '../config/apiConfig';
 
 export default function Dashboard() {
@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [scannerLoading, setScannerLoading] = useState(true);
   const [pipelineMessage, setPipelineMessage] = useState('Awaiting Audio Upload');
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [fileId, setFileId] = useState(null);
 
   const [prediction, setPrediction] = useState(null);
@@ -24,6 +25,8 @@ export default function Dashboard() {
   const [_acousticFeatures, setAcousticFeatures] = useState(null);
   const [rirFeatures, setRirFeatures] = useState(null);
   const [breathingAnalysis, setBreathingAnalysis] = useState(null);
+  const [_analysisResult, setAnalysisResult] = useState(null);
+  const [processingTime, setProcessingTime] = useState(null);
 
   // Ping backend to check status
   useEffect(() => {
@@ -46,7 +49,7 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Trigger backend upload pipeline when a valid file is selected
+  // Trigger backend upload and analysis pipeline when a valid file is selected
   useEffect(() => {
     if (!file) {
       setPrediction(null);
@@ -54,7 +57,9 @@ export default function Dashboard() {
       setAcousticFeatures(null);
       setRirFeatures(null);
       setBreathingAnalysis(null);
+      setAnalysisResult(null);
       setFileId(null);
+      setProcessingTime(null);
       setPipelineMessage('Awaiting Audio Upload');
       return;
     }
@@ -68,26 +73,56 @@ export default function Dashboard() {
       setAcousticFeatures(null);
       setRirFeatures(null);
       setBreathingAnalysis(null);
+      setAnalysisResult(null);
       setFileId(null);
+      setProcessingTime(null);
 
       try {
         // Step 1: Upload the file
         const uploadResult = await uploadAudio(file);
         if (!active) return;
 
-        const fileIdVal = uploadResult.file_name || uploadResult.file_path || uploadResult.file_id;
+        const fileIdVal = uploadResult.file_path || uploadResult.file_name || uploadResult.file_id;
         setFileId(fileIdVal);
-        setPipelineMessage('Upload completed successfully.');
+        setUploading(false);
+
+        // Step 2: Trigger analysis & prediction
+        setAnalyzing(true);
+        setPipelineMessage('Decoding spatial indicators...');
+
+        const startTime = performance.now();
+
+        const [analysisRes, predictRes] = await Promise.all([
+          analyzeAudio(fileIdVal),
+          predictAudio(fileIdVal)
+        ]);
+
+        const endTime = performance.now();
+        const elapsedSecs = ((endTime - startTime) / 1000).toFixed(2);
+
+        if (!active) return;
+
+        // Store returned objects in Dashboard state
+        setAnalysisResult(analysisRes);
+        setPrediction(predictRes.prediction);
+        setConfidence(predictRes.confidence > 1 ? predictRes.confidence / 100 : predictRes.confidence);
+        setRirFeatures(analysisRes.rir_features);
+        setBreathingAnalysis(analysisRes.breathing_analysis);
+        setAcousticFeatures(analysisRes.features);
+        setProcessingTime(elapsedSecs);
+
+        setPipelineMessage(`Analysis completed in ${elapsedSecs}s.`);
       } catch (err) {
-        console.error('Upload failure:', err);
+        console.error('Scan pipeline failure:', err);
         if (active) {
-          setPipelineMessage('Upload failed.');
+          setPipelineMessage('Scan pipeline failed.');
           // Pass the error message to the upload component so it shows up in the warning banner
           setError(err.message || 'An unexpected error occurred during processing.');
         }
       } finally {
         if (active) {
           setUploading(false);
+          setAnalyzing(false);
         }
       }
     };
@@ -98,8 +133,6 @@ export default function Dashboard() {
       active = false;
     };
   }, [file, setError]);
-
-
 
   const scannerValue = scannerLoading ? 'Checking...' : scannerOnline ? 'Online' : 'Offline';
   const scannerChange = scannerLoading
@@ -117,6 +150,22 @@ export default function Dashboard() {
     ? Math.min(100, Math.max(0, Math.round((Math.max(0.1, 20 - Math.abs(12 - breathingAnalysis.breathing_rate)) / 20) * 100)))
     : null;
 
+  const pipelineStateValue = uploading
+    ? 'UPLOADING'
+    : analyzing
+      ? 'ANALYZING'
+      : prediction
+        ? 'ANALYZED'
+        : fileId
+          ? 'UPLOADED'
+          : 'STANDBY';
+
+  const pipelineStateTheme = uploading || analyzing
+    ? 'cyan'
+    : prediction
+      ? 'green'
+      : 'gray';
+
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Page Header */}
@@ -132,7 +181,7 @@ export default function Dashboard() {
       {/* Metric Cards Grid */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Pipeline State', value: uploading ? 'UPLOADING' : fileId ? 'UPLOADED' : 'STANDBY', change: pipelineMessage, theme: uploading ? 'cyan' : fileId ? 'green' : 'gray' },
+          { label: 'Pipeline State', value: pipelineStateValue, change: pipelineMessage, theme: pipelineStateTheme },
           { label: 'Verification', value: prediction ? prediction.toUpperCase() : '—', change: prediction ? `Confidence: ${(confidence * 100).toFixed(1)}%` : 'Awaiting classification', theme: prediction === 'Real' ? 'green' : prediction === 'Fake' ? 'rose' : 'gray' },
           { label: 'Classification F1', value: '98.4%', change: 'AST-v2 model spec', theme: 'cyan' },
           { label: 'Scanner Status', value: scannerValue, change: scannerChange, theme: scannerOnline ? 'cyan' : 'amber' }
@@ -171,7 +220,7 @@ export default function Dashboard() {
             error={error}
             handleFileChange={handleFileChange}
             removeFile={removeFile}
-            uploading={uploading}
+            uploading={uploading || analyzing}
             fileId={fileId}
           />
 
@@ -206,7 +255,7 @@ export default function Dashboard() {
                       ? 'bg-cyber-rose-glow/20 border-cyber-rose/30 text-cyber-rose' 
                       : 'bg-slate-950 border-cyber-border/40 text-slate-500'
                 }`}>
-                  <FileAudio size={32} className={uploading ? 'animate-bounce' : ''} />
+                  <FileAudio size={32} className={(uploading || analyzing) ? 'animate-bounce' : ''} />
                 </div>
                 
                 <h3 className={`font-semibold text-sm uppercase tracking-wider font-mono ${
@@ -216,7 +265,7 @@ export default function Dashboard() {
                       ? 'text-cyber-rose' 
                       : 'text-slate-400'
                 }`}>
-                  {uploading 
+                  {uploading || analyzing
                     ? 'Scan In Progress' 
                     : prediction 
                       ? `Classification: ${prediction}` 
@@ -225,10 +274,12 @@ export default function Dashboard() {
                 
                 <p className="text-xs text-slate-400 max-w-[200px] mt-2 leading-relaxed">
                   {uploading
-                    ? 'Decoding spatial indicators and processing model weights...'
-                    : prediction
-                      ? `Target audio classified as ${prediction.toUpperCase()} with a probability confidence of ${(confidence * 100).toFixed(1)}%.`
-                      : 'Provide an audio file to run Room Impulse Response reflections analysis.'}
+                    ? 'Uploading audio to gateway...'
+                    : analyzing
+                      ? 'Decoding spatial indicators and processing model weights...'
+                      : prediction
+                        ? `Target audio classified as ${prediction.toUpperCase()} with a probability confidence of ${(confidence * 100).toFixed(1)}%.`
+                        : 'Provide an audio file to run Room Impulse Response reflections analysis.'}
                 </p>
               </div>
 
@@ -304,7 +355,9 @@ export default function Dashboard() {
 
               {/* Status Footer */}
               <div className="mt-8 pt-4 border-t border-cyber-border text-[10px] font-mono text-slate-500 flex items-center justify-between">
-                <span>AST CLASSIFIER MODEL</span>
+                <span>
+                  {processingTime ? `PROC TIME: ${processingTime}s` : 'AST CLASSIFIER MODEL'}
+                </span>
                 <span className={`font-semibold ${prediction ? 'text-cyber-green' : 'text-slate-500'}`}>
                   {prediction ? 'ANALYZED' : 'READY'}
                 </span>
