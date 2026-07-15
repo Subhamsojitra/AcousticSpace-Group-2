@@ -4,13 +4,16 @@ import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Results from './pages/Results';
 import NotFound from './pages/NotFound';
+import LoadingState from './components/LoadingState';
+
 
 function App() {
   return (
     <Router>
       <DashboardLayout>
-        <Routes>
+       <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/loading" element={<LoadingState />} />
           <Route path="/results" element={<Results />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -18,5 +21,4 @@ function App() {
     </Router>
   );
 }
-
 export default App;
