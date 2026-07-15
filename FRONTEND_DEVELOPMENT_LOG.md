@@ -155,3 +155,37 @@ AcousticSpace/frontend/src/hooks/useFileUpload.js
 
 ### Outcome
 The frontend upload pipeline is now fully connected to the backend Upload API. Users can upload a valid audio file, preview its waveform, receive a backend-generated file_id, and prepare the application for the upcoming audio analysis integration in the next development phase.
+
+
+### Day 6 – Backend Analysis API Integration
+#### Walkthrough – Day 6: Backend Analysis & Prediction API Integration
+
+The dashboard is now fully integrated with the backend Analysis and Prediction APIs.
+
+#### Changes Made
+#### Dashboard Integration
+- Imported `analyzeAudio` and `predictAudio` services into `Dashboard.jsx`.
+- Introduced `analyzing` state to distinguish the analysis pipeline from the initial file upload.
+- Introduced `_analysisResult` and `processingTime` state metrics.
+- Updated `runPipeline` to coordinate:
+  1. File uploading through the gateway.
+  2. Parallel execution of `analyzeAudio(fileIdVal)` and `predictAudio(fileIdVal)` endpoints.
+  3. client-side timing of the analysis pipeline.
+  4. Updating states (`prediction`, normalized `confidence`, `rirFeatures`, and `breathingAnalysis`) with backend values.
+- Updated Dashboard rendering:
+  - Metric card labels and pipeline themes adjust to `'UPLOADING'`, `'ANALYZING'`, and `'ANALYZED'` states.
+  - Classification cards display prediction type and normalized confidence percentage.
+  - Coherence meters and technical delay / pause properties load live parameters.
+  - Status footer displays calculated pipeline processing time (`PROC TIME: X.XXs`).
+
+#### Quality Assurance & Testing
+- Verified compilation builds cleanly in production mode with zero errors (`npm run build`).
+- Verified code passes ESLint rules cleanly with no warnings (`npm run lint`).
+- Validated end-to-end flow dynamically via browser automated tests.
+
+#### Files Updated
+- [Dashboard.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/Dashboard.jsx)
+
+#### Outcome
+The console-based Deepfake scanner is fully integrated. Users can upload file payloads, visualize their waveforms, and run RIR echo wall and respiratory coherence checks dynamically against the backend API gateway with complete status tracking.
+
