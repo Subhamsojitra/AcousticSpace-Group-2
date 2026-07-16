@@ -136,13 +136,29 @@ def estimate_rt60(
         return {"rt60_seconds": None, "slope_db_per_sec": None, "fit_r2": None}
 
 
-def extract_rir_features(audio: np.ndarray, sample_rate: int) -> Dict[str, Any]:
-    """Extract heuristic RIR/acoustic descriptor features."""
+def extract_rir_features(audio: np.ndarray, sample_rate: int, max_duration_sec: float = 30.0) -> Dict[str, Any]:
+    """Extract heuristic RIR/acoustic descriptor features.
+
+    Parameters
+    ----------
+    audio:
+        Preprocessed mono audio.
+    sample_rate:
+        Sampling rate.
+    max_duration_sec:
+        Maximum audio duration to process (seconds). Default 30s for fast integration.
+    """
 
     try:
         y = np.asarray(audio, dtype=np.float32)
         if y.size == 0:
             raise ValueError("Empty audio.")
+
+        # Limit to max_duration_sec for faster processing
+        max_samples = int(max_duration_sec * sample_rate)
+        if len(y) > max_samples:
+            y = y[:max_samples]
+            log_info(f"RIR extraction limited to first {max_duration_sec}s")
 
         noise_rms = estimate_background_noise(y)
         rt60 = estimate_rt60(y, sample_rate)
@@ -171,7 +187,7 @@ def extract_rir_features(audio: np.ndarray, sample_rate: int) -> Dict[str, Any]:
             "spectral_rolloff": rolloff_stats,
         }
 
-        log_info("RIR/acoustic descriptor extraction completed.")
+        log_info(f"RIR/acoustic descriptor extraction completed. Processed {len(y)/sample_rate:.2f}s of audio.")
         return result
 
     except Exception as exc:

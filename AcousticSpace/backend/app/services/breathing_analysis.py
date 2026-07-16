@@ -19,7 +19,8 @@ from app.core.logger import log_error, log_info
 
 def analyze_breathing(
     audio: np.ndarray,
-    sample_rate: int
+    sample_rate: int,
+    max_duration_sec: float = 30.0
 ):
     """
     Analyze breathing-related characteristics.
@@ -28,9 +29,10 @@ def analyze_breathing(
     ----------
     audio : np.ndarray
         Audio signal.
-
     sample_rate : int
         Sampling rate.
+    max_duration_sec : float
+        Maximum audio duration to process (seconds). Default 30s for fast integration.
 
     Returns
     -------
@@ -39,6 +41,11 @@ def analyze_breathing(
     """
 
     try:
+        # Limit to max_duration_sec for faster processing
+        max_samples = int(max_duration_sec * sample_rate)
+        if len(audio) > max_samples:
+            audio = audio[:max_samples]
+            log_info(f"Breathing analysis limited to first {max_duration_sec}s")
 
         # Detect silent intervals
         intervals = librosa.effects.split(
@@ -101,7 +108,7 @@ def analyze_breathing(
             "breathing_rate": breathing_rate
         }
 
-        log_info("Breathing analysis completed.")
+        log_info(f"Breathing analysis completed. Processed {len(audio)/sample_rate:.2f}s of audio.")
 
         return result
 

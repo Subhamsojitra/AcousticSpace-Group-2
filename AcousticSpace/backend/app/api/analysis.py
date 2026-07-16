@@ -50,25 +50,48 @@ async def analyze_audio(
     """Analyze an uploaded audio file."""
 
     start = time.perf_counter()
+    log_info(f"Analysis request received for: {request.file_path}")
 
     try:
-        # Load audio
+        # Step 1: Load audio
+        t0 = time.perf_counter()
         audio, sample_rate = load_audio(request.file_path)
+        t_load = time.perf_counter() - t0
+        log_info(f"Audio loaded in {t_load:.2f}s")
 
-        # Preprocess
+        # Step 2: Preprocess audio
+        t0 = time.perf_counter()
         processed_audio = preprocess_audio(audio, sample_rate)
+        t_preprocess = time.perf_counter() - t0
+        log_info(f"Preprocessing completed in {t_preprocess:.2f}s")
 
-        # Feature Extraction
+        # Step 3: Extract features
+        t0 = time.perf_counter()
         features = extract_features(processed_audio, sample_rate)
+        t_features = time.perf_counter() - t0
+        log_info(f"Feature extraction completed in {t_features:.2f}s")
 
-        # RIR Features
+        # Step 4: Extract RIR features
+        t0 = time.perf_counter()
         rir_features = extract_rir_features(processed_audio, sample_rate)
+        t_rir = time.perf_counter() - t0
+        log_info(f"RIR extraction completed in {t_rir:.2f}s")
 
-        # Breathing Analysis
+        # Step 5: Breathing analysis
+        t0 = time.perf_counter()
         breathing_features = analyze_breathing(processed_audio, sample_rate)
+        t_breathing = time.perf_counter() - t0
+        log_info(f"Breathing analysis completed in {t_breathing:.2f}s")
 
         processing_time = round(time.perf_counter() - start, 4)
         duration = get_audio_duration(processed_audio, sample_rate)
+
+        # Log timing breakdown
+        log_info(
+            f"Timing breakdown - Load: {t_load:.2f}s, Preprocess: {t_preprocess:.2f}s, "
+            f"Features: {t_features:.2f}s, RIR: {t_rir:.2f}s, "
+            f"Breathing: {t_breathing:.2f}s, Total: {processing_time:.2f}s"
+        )
 
         # Persist to history (prediction fields remain null for /analysis)
         import pathlib
@@ -87,7 +110,7 @@ async def analyze_audio(
         db.add(record)
         db.commit()
 
-        log_info("Audio analysis completed.")
+        log_info(f"Audio analysis completed in {processing_time:.2f}s")
 
         return AnalysisResponse(
             message="Audio analysis completed successfully.",

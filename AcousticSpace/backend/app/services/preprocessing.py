@@ -97,6 +97,7 @@ def preprocess_audio(
     sample_rate: int,
     *,
     config: PreprocessConfig | None = None,
+    max_duration_sec: float = 30.0,
 ) -> np.ndarray:
     """Preprocess audio for downstream feature extraction.
 
@@ -105,6 +106,7 @@ def preprocess_audio(
     - resampling to target sample rate
     - optional normalization
     - silence trimming
+    - limit to max_duration_sec for faster processing
 
     Parameters
     ----------
@@ -114,6 +116,8 @@ def preprocess_audio(
         Source sample rate.
     config:
         Optional preprocessing config.
+    max_duration_sec:
+        Maximum audio duration to process (seconds). Default 30s for fast integration.
 
     Returns
     -------
@@ -142,7 +146,13 @@ def preprocess_audio(
             # Keep consistent with validation philosophy.
             raise ValueError("Audio became empty after trimming silence.")
 
-        log_info("Preprocessing completed.")
+        # Limit audio length for faster processing during integration
+        max_samples = int(max_duration_sec * cfg.target_sample_rate)
+        if len(y) > max_samples:
+            y = y[:max_samples]
+            log_info(f"Audio limited to first {max_duration_sec}s for fast processing.")
+
+        log_info(f"Preprocessing completed. Output length: {len(y)/cfg.target_sample_rate:.2f}s")
         return y.astype(np.float32, copy=False)
 
     except Exception as exc:

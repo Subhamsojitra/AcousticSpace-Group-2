@@ -53,7 +53,7 @@ def _safe_log1p(x: np.ndarray, eps: float = 1e-10) -> np.ndarray:
     return np.log1p(np.maximum(x, eps))
 
 
-def extract_features(audio: np.ndarray, sample_rate: int) -> Dict[str, Any]:
+def extract_features(audio: np.ndarray, sample_rate: int, max_duration_sec: float = 30.0) -> Dict[str, Any]:
     """Extract handcrafted acoustic features.
 
     Parameters
@@ -62,6 +62,8 @@ def extract_features(audio: np.ndarray, sample_rate: int) -> Dict[str, Any]:
         Preprocessed mono audio.
     sample_rate:
         Sampling rate.
+    max_duration_sec:
+        Maximum audio duration to process (seconds). Default 30s for fast integration.
 
     Returns
     -------
@@ -73,6 +75,12 @@ def extract_features(audio: np.ndarray, sample_rate: int) -> Dict[str, Any]:
         y = np.asarray(audio, dtype=np.float32)
         if y.size == 0:
             raise ValueError("Empty audio array.")
+
+        # Limit to max_duration_sec for faster processing
+        max_samples = int(max_duration_sec * sample_rate)
+        if len(y) > max_samples:
+            y = y[:max_samples]
+            log_info(f"Feature extraction limited to first {max_duration_sec}s")
 
         # Common STFT parameters.
         n_fft = 2048 if y.shape[0] >= 2048 else 1024
@@ -173,7 +181,7 @@ def extract_features(audio: np.ndarray, sample_rate: int) -> Dict[str, Any]:
             "rms": rms_features,
         }
 
-        log_info("Feature extraction completed.")
+        log_info(f"Feature extraction completed. Processed {len(y)/sample_rate:.2f}s of audio.")
         return features
 
     except Exception as exc:

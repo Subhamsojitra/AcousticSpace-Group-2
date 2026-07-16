@@ -14,8 +14,6 @@ from app.core.config import settings
 from app.core.logger import logger
 from app.core.middleware import ExceptionLoggingMiddleware, RequestLoggingMiddleware
 from app.database.db import Base, engine
-from app.services.inference import load_ast_model, load_cnn_model
-
 # -----------------------------
 # Application Lifecycle
 # -----------------------------
@@ -36,9 +34,13 @@ async def lifespan(app: FastAPI):
     # Initialize DB tables.
     Base.metadata.create_all(bind=engine)
 
-    # Prepare future ML model integration hooks (no weights loaded here).
-    app.state.cnn_model = load_cnn_model()
-    app.state.ast_model = load_ast_model()
+    # Initialize app state for future ML model integration
+    # Models will be loaded when ready (currently using mock predictions)
+    app.state.cnn_model = None
+    app.state.ast_model = None
+    app.state.model_ready = False
+
+    logger.info("Backend started successfully. Using mock predictions for integration testing.")
 
     yield
 
