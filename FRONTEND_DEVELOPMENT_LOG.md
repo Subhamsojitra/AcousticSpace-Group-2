@@ -189,3 +189,50 @@ The dashboard is now fully integrated with the backend Analysis and Prediction A
 #### Outcome
 The console-based Deepfake scanner is fully integrated. Users can upload file payloads, visualize their waveforms, and run RIR echo wall and respiratory coherence checks dynamically against the backend API gateway with complete status tracking.
 
+
+### Day 7 – Frontend Stability, Backend Connectivity & Runtime Safety
+
+## Objective
+
+Improve frontend stability, synchronize backend connectivity status across the application, enhance API error handling, and complete end-to-end integration testing with the FastAPI backend.
+
+## Work Completed
+Backend Connectivity
+Centralized backend connectivity monitoring in App.jsx.
+Shared API Gateway status and latency across DashboardLayout and Dashboard.
+Displayed live ONLINE / OFFLINE / PROBING status.
+Added real-time latency reporting.
+
+## API Layer Improvements
+Enhanced API error handling in services/api.js.
+Added request cancellation support using AbortController.
+Improved handling of backend validation and network errors.
+
+## Dashboard Improvements
+Removed duplicate connectivity checks.
+Added safer pipeline state management.
+Improved upload and analysis status indicators.
+Disabled file interactions while requests are processing.
+Added graceful handling of nullable backend metrics.
+
+## Runtime Bug Fix
+Investigated a runtime crash during backend integration.
+Identified that nullable numeric values returned from the backend (null) caused .toFixed() runtime exceptions.
+Added strict numeric validation before formatting values.
+Dashboard now displays placeholder (—) values when metrics are unavailable instead of crashing.
+
+## Testing Performed
+Started FastAPI backend locally.
+Verified API Gateway status transitions from OFFLINE to ONLINE.
+Verified latency reporting.
+Tested upload → analysis → prediction pipeline.
+Confirmed dashboard remains stable during complete analysis.
+Executed:
+npm run lint
+npm run build
+
+## Outcome
+Stable frontend-backend integration.
+Runtime crashes resolved.
+Improved user experience and diagnostics.
+Day 7 objectives completed successfully.
