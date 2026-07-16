@@ -26,6 +26,7 @@ export default function AudioUpload({
 
   const handleDragEnter = (e) => {
     e.preventDefault();
+    if (uploading) return;
     setIsDragging(true);
   };
 
@@ -37,6 +38,7 @@ export default function AudioUpload({
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
+    if (uploading) return;
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileChange(e.dataTransfer.files[0]);
@@ -44,12 +46,14 @@ export default function AudioUpload({
   };
 
   const handleBrowseClick = () => {
+    if (uploading) return;
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
   const handleInputChange = (e) => {
+    if (uploading) return;
     if (e.target.files && e.target.files.length > 0) {
       handleFileChange(e.target.files[0]);
     }
@@ -99,6 +103,7 @@ export default function AudioUpload({
           ref={fileInputRef}
           onChange={handleInputChange}
           accept=".wav,.mp3,.flac"
+          disabled={uploading}
           className="hidden"
         />
 

@@ -8,13 +8,10 @@ import AudioUpload from '../components/AudioUpload';
 import WaveformViewer from '../components/WaveformViewer';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadAudio, analyzeAudio, predictAudio } from '../services/api';
-import { API_BASE_URL } from '../config/apiConfig';
 
-export default function Dashboard() {
+export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
   const fileUpload = useFileUpload();
   const { file, error, handleFileChange, removeFile, setError } = fileUpload;
-  const [scannerOnline, setScannerOnline] = useState(false);
-  const [scannerLoading, setScannerLoading] = useState(true);
   const [pipelineMessage, setPipelineMessage] = useState('Awaiting Audio Upload');
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -22,42 +19,17 @@ export default function Dashboard() {
 
   const [prediction, setPrediction] = useState(null);
   const [confidence, setConfidence] = useState(null);
-  const [_acousticFeatures, setAcousticFeatures] = useState(null);
   const [rirFeatures, setRirFeatures] = useState(null);
   const [breathingAnalysis, setBreathingAnalysis] = useState(null);
-  const [_analysisResult, setAnalysisResult] = useState(null);
   const [processingTime, setProcessingTime] = useState(null);
-
-  // Ping backend to check status
-  useEffect(() => {
-    let cancelled = false;
-    async function ping() {
-      setScannerLoading(true);
-      try {
-        const res = await fetch(`${API_BASE_URL}/`, { method: 'GET' });
-        if (!res.ok) throw new Error(`Root ping failed: ${res.status}`);
-        if (!cancelled) setScannerOnline(true);
-      } catch {
-        if (!cancelled) setScannerOnline(false);
-      } finally {
-        if (!cancelled) setScannerLoading(false);
-      }
-    }
-    ping();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Trigger backend upload and analysis pipeline when a valid file is selected
   useEffect(() => {
     if (!file) {
       setPrediction(null);
       setConfidence(null);
-      setAcousticFeatures(null);
       setRirFeatures(null);
       setBreathingAnalysis(null);
-      setAnalysisResult(null);
       setFileId(null);
       setProcessingTime(null);
       setPipelineMessage('Awaiting Audio Upload');
@@ -65,21 +37,28 @@ export default function Dashboard() {
     }
 
     let active = true;
+    const abortController = new AbortController();
+
     const runPipeline = async () => {
       setUploading(true);
       setPipelineMessage('Uploading audio to gateway...');
       setPrediction(null);
       setConfidence(null);
-      setAcousticFeatures(null);
       setRirFeatures(null);
       setBreathingAnalysis(null);
-      setAnalysisResult(null);
       setFileId(null);
       setProcessingTime(null);
 
       try {
         // Step 1: Upload the file
-        const uploadResult = await uploadAudio(file);
+        let uploadResult;
+        try {
+          uploadResult = await uploadAudio(file, abortController.signal);
+        } catch (uploadErr) {
+          if (uploadErr.name === 'AbortError') throw uploadErr;
+          throw new Error(`Upload failed: ${uploadErr.message || 'Unknown network error'}`);
+        }
+        
         if (!active) return;
 
         const fileIdVal = uploadResult.file_path || uploadResult.file_name || uploadResult.file_id;
@@ -92,10 +71,21 @@ export default function Dashboard() {
 
         const startTime = performance.now();
 
-        const [analysisRes, predictRes] = await Promise.all([
-          analyzeAudio(fileIdVal),
-          predictAudio(fileIdVal)
+        let analysisRes;
+        let predictRes;
+
+        const results = await Promise.all([
+          analyzeAudio(fileIdVal, abortController.signal).catch(err => {
+            if (err.name === 'AbortError') throw err;
+            throw new Error(`Analysis failed: ${err.message}`);
+          }),
+          predictAudio(fileIdVal, abortController.signal).catch(err => {
+            if (err.name === 'AbortError') throw err;
+            throw new Error(`Prediction failed: ${err.message}`);
+          })
         ]);
+        analysisRes = results[0];
+        predictRes = results[1];
 
         const endTime = performance.now();
         const elapsedSecs = ((endTime - startTime) / 1000).toFixed(2);
@@ -103,20 +93,25 @@ export default function Dashboard() {
         if (!active) return;
 
         // Store returned objects in Dashboard state
-        setAnalysisResult(analysisRes);
-        setPrediction(predictRes.prediction);
-        setConfidence(predictRes.confidence > 1 ? predictRes.confidence / 100 : predictRes.confidence);
-        setRirFeatures(analysisRes.rir_features);
-        setBreathingAnalysis(analysisRes.breathing_analysis);
-        setAcousticFeatures(analysisRes.features);
+        setPrediction(predictRes?.prediction || null);
+        setConfidence(
+          predictRes && typeof predictRes.confidence === 'number'
+            ? (predictRes.confidence > 1 ? predictRes.confidence / 100 : predictRes.confidence)
+            : null
+        );
+        setRirFeatures(analysisRes?.rir_features || null);
+        setBreathingAnalysis(analysisRes?.breathing_analysis || null);
         setProcessingTime(elapsedSecs);
 
         setPipelineMessage(`Analysis completed in ${elapsedSecs}s.`);
       } catch (err) {
+        if (err.name === 'AbortError') {
+          console.log('Pipeline request aborted.');
+          return;
+        }
         console.error('Scan pipeline failure:', err);
         if (active) {
           setPipelineMessage('Scan pipeline failed.');
-          // Pass the error message to the upload component so it shows up in the warning banner
           setError(err.message || 'An unexpected error occurred during processing.');
         }
       } finally {
@@ -131,40 +126,45 @@ export default function Dashboard() {
 
     return () => {
       active = false;
+      abortController.abort();
     };
   }, [file, setError]);
 
-  const scannerValue = scannerLoading ? 'Checking...' : scannerOnline ? 'Online' : 'Offline';
-  const scannerChange = scannerLoading
+  const scannerValue = apiStatus === 'checking' ? 'Checking...' : apiStatus === 'online' ? 'Online' : 'Offline';
+  const scannerChange = apiStatus === 'checking'
     ? 'Probing backend'
-    : scannerOnline
+    : apiStatus === 'online'
       ? 'API reachable'
       : 'Awaiting backend';
 
   // Derived metrics for UI meters
-  const rirCoherence = rirFeatures
+  const rirCoherence = rirFeatures && typeof rirFeatures.background_noise_rms === 'number'
     ? Math.min(100, Math.max(0, Math.round((1 - Math.min(1, rirFeatures.background_noise_rms)) * 100)))
     : null;
 
-  const respiratoryCoherence = breathingAnalysis
+  const respiratoryCoherence = breathingAnalysis && typeof breathingAnalysis.breathing_rate === 'number'
     ? Math.min(100, Math.max(0, Math.round((Math.max(0.1, 20 - Math.abs(12 - breathingAnalysis.breathing_rate)) / 20) * 100)))
     : null;
 
-  const pipelineStateValue = uploading
-    ? 'UPLOADING'
-    : analyzing
-      ? 'ANALYZING'
-      : prediction
-        ? 'ANALYZED'
-        : fileId
-          ? 'UPLOADED'
-          : 'STANDBY';
+  const pipelineStateValue = error && !uploading && !analyzing
+    ? 'FAILED'
+    : uploading
+      ? 'UPLOADING'
+      : analyzing
+        ? 'ANALYZING'
+        : prediction
+          ? 'ANALYZED'
+          : fileId
+            ? 'UPLOADED'
+            : 'STANDBY';
 
-  const pipelineStateTheme = uploading || analyzing
-    ? 'cyan'
-    : prediction
-      ? 'green'
-      : 'gray';
+  const pipelineStateTheme = error && !uploading && !analyzing
+    ? 'rose'
+    : uploading || analyzing
+      ? 'cyan'
+      : prediction
+        ? 'green'
+        : 'gray';
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -182,13 +182,23 @@ export default function Dashboard() {
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'Pipeline State', value: pipelineStateValue, change: pipelineMessage, theme: pipelineStateTheme },
-          { label: 'Verification', value: prediction ? prediction.toUpperCase() : '—', change: prediction ? `Confidence: ${(confidence * 100).toFixed(1)}%` : 'Awaiting classification', theme: prediction === 'Real' ? 'green' : prediction === 'Fake' ? 'rose' : 'gray' },
+          { label: 'Verification', value: prediction ? prediction.toUpperCase() : '—', change: (prediction && typeof confidence === 'number') ? `Confidence: ${(confidence * 100).toFixed(1)}%` : 'Awaiting classification', theme: prediction === 'Real' ? 'green' : prediction === 'Fake' ? 'rose' : 'gray' },
           { label: 'Classification F1', value: '98.4%', change: 'AST-v2 model spec', theme: 'cyan' },
-          { label: 'Scanner Status', value: scannerValue, change: scannerChange, theme: scannerOnline ? 'cyan' : 'amber' }
+          { label: 'Scanner Status', value: scannerValue, change: scannerChange, theme: apiStatus === 'online' ? 'cyan' : apiStatus === 'checking' ? 'amber' : 'rose' }
         ].map((m, idx) => (
           <div 
             key={idx} 
-            className="p-6 bg-cyber-dark rounded-xl border border-cyber-border transition-all hover:border-cyber-cyan/10"
+            className={`p-6 bg-cyber-dark rounded-xl border transition-all duration-300 ${
+              m.theme === 'amber' 
+                ? 'border-cyber-border hover:border-amber-500/30 hover:shadow-[0_0_15px_rgba(245,158,11,0.05)]' 
+                : m.theme === 'cyan' 
+                  ? 'border-cyber-border hover:border-cyber-cyan/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.05)]' 
+                  : m.theme === 'green' 
+                    ? 'border-cyber-border hover:border-cyber-green/30 hover:shadow-[0_0_15px_rgba(16,185,129,0.05)]' 
+                    : m.theme === 'rose' 
+                      ? 'border-cyber-border hover:border-cyber-rose/30 hover:shadow-[0_0_15px_rgba(244,63,94,0.05)]' 
+                      : 'border-cyber-border hover:border-slate-700/30'
+            }`}
           >
             <span className="text-xs font-mono text-slate-500 uppercase tracking-widest block">
               {m.label}
@@ -241,14 +251,18 @@ export default function Dashboard() {
             <div className="p-6 flex-1 flex flex-col justify-between min-h-[400px]">
               
               {/* Scanner Interface Output */}
-              <div className={`flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed rounded-lg transition-all duration-300 ${
+              <div className={`relative overflow-hidden flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed rounded-lg transition-all duration-300 ${
                 prediction === 'Real' 
                   ? 'border-cyber-green/30 bg-cyber-green-glow/5' 
                   : prediction === 'Fake' 
                     ? 'border-cyber-rose/30 bg-cyber-rose-glow/5' 
                     : 'border-slate-800 bg-slate-950/20'
               }`}>
-                <div className={`p-3 border rounded-lg mb-4 transition-all duration-300 ${
+                {(uploading || analyzing) && (
+                  <div className="scanner-line"></div>
+                )}
+                
+                <div className={`p-3 border rounded-lg mb-4 transition-all duration-300 z-10 ${
                   prediction === 'Real' 
                     ? 'bg-cyber-green-glow/20 border-cyber-green/30 text-cyber-green' 
                     : prediction === 'Fake' 
@@ -258,29 +272,62 @@ export default function Dashboard() {
                   <FileAudio size={32} className={(uploading || analyzing) ? 'animate-bounce' : ''} />
                 </div>
                 
-                <h3 className={`font-semibold text-sm uppercase tracking-wider font-mono ${
+                <h3 className={`font-semibold text-sm uppercase tracking-wider font-mono z-10 ${
                   prediction === 'Real' 
                     ? 'text-cyber-green' 
                     : prediction === 'Fake' 
                       ? 'text-cyber-rose' 
                       : 'text-slate-400'
                 }`}>
-                  {uploading || analyzing
-                    ? 'Scan In Progress' 
-                    : prediction 
-                      ? `Classification: ${prediction}` 
-                      : 'Scan Pipeline Ready'}
+                  {uploading
+                    ? 'Uploading audio...' 
+                    : analyzing
+                      ? 'Analyzing cadence...'
+                      : prediction 
+                        ? `Classification: ${prediction}` 
+                        : 'Scan Pipeline Ready'}
                 </h3>
                 
-                <p className="text-xs text-slate-400 max-w-[200px] mt-2 leading-relaxed">
+                <p className="text-xs text-slate-400 max-w-[220px] mt-2 leading-relaxed z-10">
                   {uploading
                     ? 'Uploading audio to gateway...'
                     : analyzing
                       ? 'Decoding spatial indicators and processing model weights...'
                       : prediction
-                        ? `Target audio classified as ${prediction.toUpperCase()} with a probability confidence of ${(confidence * 100).toFixed(1)}%.`
+                        ? `Target audio classified as ${prediction.toUpperCase()} with a probability confidence of ${(typeof confidence === 'number' ? (confidence * 100).toFixed(1) : '—')}%.`
                         : 'Provide an audio file to run Room Impulse Response reflections analysis.'}
                 </p>
+
+                {/* Progress Pipeline Steps */}
+                {(uploading || analyzing || prediction) && (
+                  <div className="mt-4 flex items-center justify-center gap-4 text-[10px] font-mono z-10 animate-fadeIn">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-2 h-2 rounded-full ${
+                        prediction || analyzing
+                          ? 'bg-cyber-green shadow-[0_0_8px_var(--color-cyber-green)]'
+                          : uploading
+                            ? 'bg-cyber-cyan animate-pulse shadow-[0_0_8px_var(--color-cyber-cyan)]'
+                            : 'bg-slate-700'
+                      }`} />
+                      <span className={prediction || analyzing ? 'text-cyber-green font-semibold' : uploading ? 'text-cyber-cyan font-semibold animate-pulse' : 'text-slate-500'}>
+                        UPLOAD
+                      </span>
+                    </div>
+                    <div className="h-[1px] w-4 bg-slate-800" />
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-2 h-2 rounded-full ${
+                        prediction
+                          ? 'bg-cyber-green shadow-[0_0_8px_var(--color-cyber-green)]'
+                          : analyzing
+                            ? 'bg-cyber-cyan animate-pulse shadow-[0_0_8px_var(--color-cyber-cyan)]'
+                            : 'bg-slate-700'
+                      }`} />
+                      <span className={prediction ? 'text-cyber-green font-semibold' : analyzing ? 'text-cyber-cyan font-semibold animate-pulse' : 'text-slate-500'}>
+                        ANALYSIS
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Diagnostic Scores Meters */}
@@ -300,8 +347,12 @@ export default function Dashboard() {
                   </div>
                   <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-900">
                     <div 
-                      className="h-full bg-cyber-cyan transition-all duration-500 rounded-full" 
-                      style={{ width: `${rirCoherence ?? 0}%` }}
+                      className={`h-full transition-all duration-500 rounded-full ${
+                        uploading || analyzing 
+                          ? 'bg-cyber-cyan/40 animate-pulse w-full' 
+                          : 'bg-cyber-cyan'
+                      }`} 
+                      style={{ width: uploading || analyzing ? '100%' : `${rirCoherence ?? 0}%` }}
                     ></div>
                   </div>
                 </div>
@@ -316,41 +367,43 @@ export default function Dashboard() {
                   </div>
                   <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-900">
                     <div 
-                      className="h-full bg-cyber-green transition-all duration-500 rounded-full" 
-                      style={{ width: `${respiratoryCoherence ?? 0}%` }}
+                      className={`h-full transition-all duration-500 rounded-full ${
+                        uploading || analyzing 
+                          ? 'bg-cyber-green/40 animate-pulse w-full' 
+                          : 'bg-cyber-green'
+                      }`} 
+                      style={{ width: uploading || analyzing ? '100%' : `${respiratoryCoherence ?? 0}%` }}
                     ></div>
                   </div>
                 </div>
 
                 {/* Additional Detailed Extracted Parameters */}
-                {rirFeatures && (
-                  <div className="pt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-mono border-t border-cyber-border/20 mt-2 text-slate-500">
-                    <div>
-                      <span>RT60 Delay: </span>
-                      <span className="text-slate-300">
-                        {rirFeatures.rt60?.rt60_seconds ? `${rirFeatures.rt60.rt60_seconds.toFixed(2)}s` : 'N/A'}
-                      </span>
-                    </div>
-                    <div>
-                      <span>Pauses: </span>
-                      <span className="text-slate-300">
-                        {breathingAnalysis?.pause_count ?? 0} times
-                      </span>
-                    </div>
-                    <div>
-                      <span>Background: </span>
-                      <span className="text-slate-300 truncate block">
-                        {(rirFeatures.background_noise_rms * 100).toFixed(2)}% RMS
-                      </span>
-                    </div>
-                    <div>
-                      <span>Resp. Rate: </span>
-                      <span className="text-slate-300">
-                        {breathingAnalysis?.breathing_rate ? `${breathingAnalysis.breathing_rate}/min` : 'N/A'}
-                      </span>
-                    </div>
+                <div className="pt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-mono border-t border-cyber-border/20 mt-2 text-slate-500">
+                  <div>
+                    <span>RT60 Delay: </span>
+                    <span className="text-slate-300">
+                      {typeof rirFeatures?.rt60?.rt60_seconds === 'number' ? `${rirFeatures.rt60.rt60_seconds.toFixed(2)}s` : '—'}
+                    </span>
                   </div>
-                )}
+                  <div>
+                    <span>Pauses: </span>
+                    <span className="text-slate-300">
+                      {typeof breathingAnalysis?.pause_count === 'number' ? `${breathingAnalysis.pause_count} times` : '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span>Background: </span>
+                    <span className="text-slate-300 truncate block">
+                      {typeof rirFeatures?.background_noise_rms === 'number' ? `${(rirFeatures.background_noise_rms * 100).toFixed(2)}% RMS` : '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span>Resp. Rate: </span>
+                    <span className="text-slate-300">
+                      {typeof breathingAnalysis?.breathing_rate === 'number' ? `${breathingAnalysis.breathing_rate}/min` : '—'}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Status Footer */}

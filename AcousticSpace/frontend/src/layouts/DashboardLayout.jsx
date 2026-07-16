@@ -11,7 +11,7 @@ import {
   Cpu as CpuIcon
 } from 'lucide-react';
 
-export default function DashboardLayout({ children }) {
+export default function DashboardLayout({ children, apiStatus = 'checking', latency = null }) {
   const location = useLocation();
 
   const navItems = [
@@ -87,24 +87,52 @@ export default function DashboardLayout({ children }) {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[11px] font-mono">
               <span className="text-slate-500 flex items-center gap-1.5">
-                <Radio size={12} className="text-amber-500 animate-pulse" />
+                <Radio 
+                  size={12} 
+                  className={
+                    apiStatus === 'online' 
+                      ? 'text-cyber-green animate-pulse' 
+                      : apiStatus === 'checking' 
+                        ? 'text-cyber-cyan animate-pulse' 
+                        : 'text-cyber-rose animate-pulse'
+                  } 
+                />
                 API GATEWAY
               </span>
-              <span className="text-amber-500 font-semibold">AWAITING BACKEND</span>
+              <span className={`font-semibold ${
+                apiStatus === 'online' 
+                  ? 'text-cyber-green' 
+                  : apiStatus === 'checking' 
+                    ? 'text-cyber-cyan' 
+                    : 'text-cyber-rose'
+              }`}>
+                {apiStatus === 'online' 
+                  ? 'ONLINE' 
+                  : apiStatus === 'checking' 
+                    ? 'PROBING' 
+                    : 'OFFLINE'}
+              </span>
             </div>
             <div className="flex items-center justify-between text-[11px] font-mono">
               <span className="text-slate-500 flex items-center gap-1.5">
-                <CpuIcon size={12} className="text-slate-600" />
+                <CpuIcon 
+                  size={12} 
+                  className={apiStatus === 'online' ? 'text-cyber-green' : 'text-slate-600'} 
+                />
                 AST MODEL v2.4
               </span>
-              <span className="text-slate-500 font-semibold">OFFLINE</span>
+              <span className={`font-semibold ${apiStatus === 'online' ? 'text-cyber-green' : 'text-slate-500'}`}>
+                {apiStatus === 'online' ? 'READY' : 'OFFLINE'}
+              </span>
             </div>
             <div className="flex items-center justify-between text-[11px] font-mono">
               <span className="text-slate-500 flex items-center gap-1.5">
-                <Database size={12} className="text-slate-600" />
+                <Database size={12} className={apiStatus === 'online' ? 'text-cyber-cyan' : 'text-slate-600'} />
                 LATENCY
               </span>
-              <span className="text-slate-500 font-semibold">— ms</span>
+              <span className={`font-semibold ${apiStatus === 'online' ? 'text-cyber-cyan' : 'text-slate-500'}`}>
+                {latency !== null ? `${latency} ms` : '— ms'}
+              </span>
             </div>
           </div>
         </div>
