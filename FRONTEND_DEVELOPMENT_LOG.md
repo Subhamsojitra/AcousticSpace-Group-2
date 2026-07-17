@@ -236,3 +236,36 @@ Stable frontend-backend integration.
 Runtime crashes resolved.
 Improved user experience and diagnostics.
 Day 7 objectives completed successfully.
+
+## Day 8 – Frontend UX Refinement, Stability & Error Handling
+
+## Objective
+
+Improve frontend usability, maintainability, and robustness while keeping the backend API unchanged.
+
+## Tasks Completed:
+Refined the Waveform Viewer to maintain a stable layout between standby and active states.
+Reduced layout shifting in the Audio Upload component for smoother transitions.
+Improved metric card alignment to maintain consistent heights across different states.
+Added cancel functionality to allow users to abort an ongoing upload or analysis.
+Implemented retry support for failed scan attempts.
+Improved pipeline state handling with clearer upload, analysis, success, and failure indicators.
+Enhanced error handling with more descriptive user-facing messages.
+Cleared stale errors when a new scan starts.
+Ensured active API requests are safely aborted when a file is removed or replaced.
+Removed unused code and performed frontend cleanup.
+
+## Testing Performed
+Verified upload → analysis → prediction workflow.
+Tested cancel and retry functionality.
+Verified offline/online API behavior.
+Confirmed UI remains stable without layout shifting.
+
+## Executed:
+npm run lint
+npm run build
+Tested integration with the running FastAPI backend.
+
+## Observation:
+During testing, the same audio file occasionally produced different prediction results (e.g., Fake on one run and Real on another).
+This observation was shared with the team for further investigation during integration testing.
