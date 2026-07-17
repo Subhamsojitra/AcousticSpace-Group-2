@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { 
   FileAudio, 
   Info, 
-  Shield
+  Shield,
+  ShieldAlert
 } from 'lucide-react';
 import AudioUpload from '../components/AudioUpload';
 import WaveformViewer from '../components/WaveformViewer';
@@ -16,12 +17,17 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [fileId, setFileId] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const [prediction, setPrediction] = useState(null);
   const [confidence, setConfidence] = useState(null);
   const [rirFeatures, setRirFeatures] = useState(null);
   const [breathingAnalysis, setBreathingAnalysis] = useState(null);
   const [processingTime, setProcessingTime] = useState(null);
+
+  const handleRetry = () => {
+    setRetryKey(prev => prev + 1);
+  };
 
   // Trigger backend upload and analysis pipeline when a valid file is selected
   useEffect(() => {
@@ -41,6 +47,7 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
 
     const runPipeline = async () => {
       setUploading(true);
+      setError(null); // Clear previous error state immediately
       setPipelineMessage('Uploading audio to gateway...');
       setPrediction(null);
       setConfidence(null);
@@ -112,7 +119,16 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
         console.error('Scan pipeline failure:', err);
         if (active) {
           setPipelineMessage('Scan pipeline failed.');
-          setError(err.message || 'An unexpected error occurred during processing.');
+          
+          let readableMessage = err.message || 'An unexpected error occurred during processing.';
+          if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('network error') || err.message.includes('Failed to upload'))) {
+            if (apiStatus === 'offline') {
+              readableMessage = 'API Gateway is offline. Please make sure the backend is running and online.';
+            } else {
+              readableMessage = 'Network connection failed. Please check your network connectivity and try again.';
+            }
+          }
+          setError(readableMessage);
         }
       } finally {
         if (active) {
@@ -128,7 +144,7 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
       active = false;
       abortController.abort();
     };
-  }, [file, setError]);
+  }, [file, retryKey, setError, apiStatus]);
 
   const scannerValue = apiStatus === 'checking' ? 'Checking...' : apiStatus === 'online' ? 'Online' : 'Offline';
   const scannerChange = apiStatus === 'checking'
@@ -188,7 +204,7 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
         ].map((m, idx) => (
           <div 
             key={idx} 
-            className={`p-6 bg-cyber-dark rounded-xl border transition-all duration-300 ${
+            className={`p-6 bg-cyber-dark rounded-xl border transition-all duration-300 min-h-[128px] flex flex-col justify-between ${
               m.theme === 'amber' 
                 ? 'border-cyber-border hover:border-amber-500/30 hover:shadow-[0_0_15px_rgba(245,158,11,0.05)]' 
                 : m.theme === 'cyan' 
@@ -200,17 +216,19 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
                       : 'border-cyber-border hover:border-slate-700/30'
             }`}
           >
-            <span className="text-xs font-mono text-slate-500 uppercase tracking-widest block">
-              {m.label}
-            </span>
-            <span className="text-2xl font-display font-bold text-slate-100 mt-2 block">
-              {m.value}
-            </span>
+            <div>
+              <span className="text-xs font-mono text-slate-500 uppercase tracking-widest block">
+                {m.label}
+              </span>
+              <span className="text-2xl font-display font-bold text-slate-100 mt-1 block">
+                {m.value}
+              </span>
+            </div>
             <div className="flex items-center gap-1.5 mt-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${
+              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                 m.theme === 'amber' ? 'bg-amber-500' : m.theme === 'cyan' ? 'bg-cyber-cyan' : m.theme === 'green' ? 'bg-cyber-green' : m.theme === 'rose' ? 'bg-cyber-rose' : 'bg-slate-600'
               }`}></div>
-              <span className="text-[11px] font-mono text-slate-400">
+              <span className="text-[11px] font-mono text-slate-400 truncate" title={m.change}>
                 {m.change}
               </span>
             </div>
@@ -232,6 +250,7 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
             removeFile={removeFile}
             uploading={uploading || analyzing}
             fileId={fileId}
+            handleRetry={handleRetry}
           />
 
           {/* Dynamic Waveform Visualizer */}
@@ -256,7 +275,9 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
                   ? 'border-cyber-green/30 bg-cyber-green-glow/5' 
                   : prediction === 'Fake' 
                     ? 'border-cyber-rose/30 bg-cyber-rose-glow/5' 
-                    : 'border-slate-800 bg-slate-950/20'
+                    : error && !uploading && !analyzing
+                      ? 'border-cyber-rose/30 bg-cyber-rose-glow/5'
+                      : 'border-slate-800 bg-slate-950/20'
               }`}>
                 {(uploading || analyzing) && (
                   <div className="scanner-line"></div>
@@ -267,9 +288,15 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
                     ? 'bg-cyber-green-glow/20 border-cyber-green/30 text-cyber-green' 
                     : prediction === 'Fake' 
                       ? 'bg-cyber-rose-glow/20 border-cyber-rose/30 text-cyber-rose' 
-                      : 'bg-slate-950 border-cyber-border/40 text-slate-500'
+                      : error && !uploading && !analyzing
+                        ? 'bg-cyber-rose-glow/20 border-cyber-rose/30 text-cyber-rose'
+                        : 'bg-slate-950 border-cyber-border/40 text-slate-500'
                 }`}>
-                  <FileAudio size={32} className={(uploading || analyzing) ? 'animate-bounce' : ''} />
+                  {error && !uploading && !analyzing ? (
+                    <ShieldAlert size={32} />
+                  ) : (
+                    <FileAudio size={32} className={(uploading || analyzing) ? 'animate-bounce' : ''} />
+                  )}
                 </div>
                 
                 <h3 className={`font-semibold text-sm uppercase tracking-wider font-mono z-10 ${
@@ -277,52 +304,92 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
                     ? 'text-cyber-green' 
                     : prediction === 'Fake' 
                       ? 'text-cyber-rose' 
-                      : 'text-slate-400'
+                      : error && !uploading && !analyzing
+                        ? 'text-cyber-rose'
+                        : 'text-slate-400'
                 }`}>
-                  {uploading
-                    ? 'Uploading audio...' 
-                    : analyzing
-                      ? 'Analyzing cadence...'
-                      : prediction 
-                        ? `Classification: ${prediction}` 
-                        : 'Scan Pipeline Ready'}
+                  {error && !uploading && !analyzing
+                    ? 'Scan Failed'
+                    : uploading
+                      ? 'Uploading audio...' 
+                      : analyzing
+                        ? 'Analyzing cadence...'
+                        : prediction 
+                          ? `Classification: ${prediction}` 
+                          : 'Scan Pipeline Ready'}
                 </h3>
                 
                 <p className="text-xs text-slate-400 max-w-[220px] mt-2 leading-relaxed z-10">
-                  {uploading
-                    ? 'Uploading audio to gateway...'
-                    : analyzing
-                      ? 'Decoding spatial indicators and processing model weights...'
-                      : prediction
-                        ? `Target audio classified as ${prediction.toUpperCase()} with a probability confidence of ${(typeof confidence === 'number' ? (confidence * 100).toFixed(1) : '—')}%.`
-                        : 'Provide an audio file to run Room Impulse Response reflections analysis.'}
+                  {error && !uploading && !analyzing
+                    ? error
+                    : uploading
+                      ? 'Uploading audio to gateway...'
+                      : analyzing
+                        ? 'Decoding spatial indicators and processing model weights...'
+                        : prediction
+                          ? `Target audio classified as ${prediction.toUpperCase()} with a probability confidence of ${(typeof confidence === 'number' ? (confidence * 100).toFixed(1) : '—')}%.`
+                          : 'Provide an audio file to run Room Impulse Response reflections analysis.'}
                 </p>
 
+                {error && !uploading && !analyzing && (
+                  <button
+                    type="button"
+                    onClick={handleRetry}
+                    className="mt-4 px-4 py-2 rounded-lg bg-cyber-rose/20 hover:bg-cyber-rose/30 border border-cyber-rose/30 hover:border-cyber-rose/50 text-slate-200 font-mono text-xs font-bold transition-all cursor-pointer uppercase tracking-wider z-10"
+                  >
+                    Retry Scan
+                  </button>
+                )}
+
                 {/* Progress Pipeline Steps */}
-                {(uploading || analyzing || prediction) && (
+                {(uploading || analyzing || prediction || (error && file)) && (
                   <div className="mt-4 flex items-center justify-center gap-4 text-[10px] font-mono z-10 animate-fadeIn">
+                    {/* Step 1: Upload */}
                     <div className="flex items-center gap-1.5">
                       <div className={`w-2 h-2 rounded-full ${
-                        prediction || analyzing
+                        (prediction || analyzing || (error && fileId))
                           ? 'bg-cyber-green shadow-[0_0_8px_var(--color-cyber-green)]'
                           : uploading
                             ? 'bg-cyber-cyan animate-pulse shadow-[0_0_8px_var(--color-cyber-cyan)]'
-                            : 'bg-slate-700'
+                            : (error && !fileId)
+                              ? 'bg-cyber-rose shadow-[0_0_8px_var(--color-cyber-rose)]'
+                              : 'bg-slate-700'
                       }`} />
-                      <span className={prediction || analyzing ? 'text-cyber-green font-semibold' : uploading ? 'text-cyber-cyan font-semibold animate-pulse' : 'text-slate-500'}>
+                      <span className={
+                        (prediction || analyzing || (error && fileId))
+                          ? 'text-cyber-green font-semibold'
+                          : uploading
+                            ? 'text-cyber-cyan font-semibold animate-pulse'
+                            : (error && !fileId)
+                              ? 'text-cyber-rose font-semibold'
+                              : 'text-slate-500'
+                      }>
                         UPLOAD
                       </span>
                     </div>
+
                     <div className="h-[1px] w-4 bg-slate-800" />
+
+                    {/* Step 2: Analysis */}
                     <div className="flex items-center gap-1.5">
                       <div className={`w-2 h-2 rounded-full ${
                         prediction
                           ? 'bg-cyber-green shadow-[0_0_8px_var(--color-cyber-green)]'
                           : analyzing
                             ? 'bg-cyber-cyan animate-pulse shadow-[0_0_8px_var(--color-cyber-cyan)]'
-                            : 'bg-slate-700'
+                            : (error && fileId)
+                              ? 'bg-cyber-rose shadow-[0_0_8px_var(--color-cyber-rose)]'
+                              : 'bg-slate-700'
                       }`} />
-                      <span className={prediction ? 'text-cyber-green font-semibold' : analyzing ? 'text-cyber-cyan font-semibold animate-pulse' : 'text-slate-500'}>
+                      <span className={
+                        prediction
+                          ? 'text-cyber-green font-semibold'
+                          : analyzing
+                            ? 'text-cyber-cyan font-semibold animate-pulse'
+                            : (error && fileId)
+                              ? 'text-cyber-rose font-semibold'
+                              : 'text-slate-500'
+                      }>
                         ANALYSIS
                       </span>
                     </div>
