@@ -1,22 +1,16 @@
 import React, { useRef, useState } from 'react';
 import { UploadCloud, FileAudio, Trash2, ShieldAlert, Loader2 } from 'lucide-react';
-import { useFileUpload } from '../hooks/useFileUpload';
 import { formatFileSize } from '../utils/fileValidation';
 
 export default function AudioUpload({
-  file: propFile,
-  error: propError,
-  handleFileChange: propHandleFileChange,
-  removeFile: propRemoveFile,
+  file = null,
+  error = null,
+  handleFileChange = () => {},
+  removeFile = () => {},
   uploading = false,
   fileId = null,
-} = {}) {
-  const localState = useFileUpload();
-
-  const file = propFile !== undefined ? propFile : localState.file;
-  const error = propError !== undefined ? propError : localState.error;
-  const handleFileChange = propHandleFileChange !== undefined ? propHandleFileChange : localState.handleFileChange;
-  const removeFile = propRemoveFile !== undefined ? propRemoveFile : localState.removeFile;
+  handleRetry = null,
+}) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -84,16 +78,27 @@ export default function AudioUpload({
       <div className="p-8 space-y-6">
         {/* Error State Banner */}
         {error && (
-          <div className="flex items-start gap-3 p-4 bg-cyber-rose-glow border border-cyber-rose/30 rounded-lg text-slate-200 animate-fadeIn glow-shadow-rose">
-            <ShieldAlert className="text-cyber-rose shrink-0 mt-0.5" size={18} />
-            <div className="space-y-1">
-              <h4 className="text-xs font-mono font-bold text-cyber-rose uppercase tracking-wide">
-                Security Scan Warning
-              </h4>
-              <p className="text-xs text-slate-300">
-                {error}
-              </p>
+          <div className="flex items-start justify-between gap-3 p-4 bg-cyber-rose-glow border border-cyber-rose/30 rounded-lg text-slate-200 animate-fadeIn glow-shadow-rose">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="text-cyber-rose shrink-0 mt-0.5" size={18} />
+              <div className="space-y-1">
+                <h4 className="text-xs font-mono font-bold text-cyber-rose uppercase tracking-wide">
+                  Security Scan Warning
+                </h4>
+                <p className="text-xs text-slate-300">
+                  {error}
+                </p>
+              </div>
             </div>
+            {file && !uploading && handleRetry && (
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="px-2.5 py-1 rounded bg-cyber-rose/20 hover:bg-cyber-rose/30 text-cyber-rose border border-cyber-rose/30 hover:border-cyber-rose/50 font-mono text-xs font-bold transition-all cursor-pointer self-center shrink-0 uppercase tracking-wider"
+              >
+                Retry
+              </button>
+            )}
           </div>
         )}
 
@@ -116,7 +121,7 @@ export default function AudioUpload({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={handleBrowseClick}
-            className={`border border-dashed rounded-xl p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
+            className={`border border-dashed rounded-xl py-8 px-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
               isDragging
                 ? 'border-cyber-cyan bg-cyber-cyan-glow/20 scale-[1.01] glow-shadow-cyan'
                 : 'border-slate-700/60 bg-slate-950/30 hover:border-cyber-cyan/40 hover:bg-slate-950/50'
@@ -179,7 +184,7 @@ export default function AudioUpload({
                   </span>
                   {uploading && (
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-cyber-cyan-glow text-cyber-cyan border border-cyber-cyan/20 animate-pulse">
-                      UPLOADING...
+                      PROCESSING...
                     </span>
                   )}
                   {fileId && !uploading && (
@@ -190,17 +195,15 @@ export default function AudioUpload({
                 </div>
               </div>
 
-              {/* Remove File Button */}
+              {/* Remove/Cancel File Button */}
               <button
                 type="button"
                 onClick={removeFile}
-                disabled={uploading}
-                className={`p-2.5 rounded-lg border border-cyber-rose/20 bg-cyber-rose-glow text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 transition-all duration-200 cursor-pointer flex items-center justify-center ${
-                  uploading ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-                title="Remove File"
+                className="p-2 px-3 rounded-lg border border-cyber-rose/30 bg-cyber-rose-glow/20 text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 transition-all duration-200 cursor-pointer flex items-center gap-1.5 font-mono text-xs font-bold shrink-0"
+                title={uploading ? "Cancel Scan & Remove File" : "Remove File"}
               >
-                <Trash2 size={16} />
+                <Trash2 size={14} />
+                {uploading ? <span>CANCEL</span> : <span>REMOVE</span>}
               </button>
             </div>
 

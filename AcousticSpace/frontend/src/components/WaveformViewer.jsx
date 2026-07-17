@@ -125,56 +125,6 @@ export default function WaveformViewer({
     };
   }, [file, externalWaveformData]);
 
-  // Render standby state (placeholder when no audio is uploaded)
-  if (!file && !externalWaveformData) {
-    return (
-      <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden">
-        <div className="p-6 border-b border-cyber-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="text-cyber-cyan" size={18} />
-            <h2 className="font-display font-semibold text-slate-200">
-              Spectral Waveform Analyzer
-            </h2>
-          </div>
-          <span className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-            STANDBY
-          </span>
-        </div>
-
-        <div className="p-8 bg-slate-950/50 relative overflow-hidden flex items-center justify-center min-h-[160px]">
-          {/* Static Waveform Mock (Muted Mapped Bars) */}
-          <svg className="w-full h-32 text-slate-800/25 animate-pulse" viewBox="0 0 400 100" preserveAspectRatio="none">
-            {[...Array(60)].map((_, i) => {
-              const x = 5 + i * 6.5;
-              const height = 15 + Math.sin(x * 0.05) * 8;
-              const y = 50 - height / 2;
-              
-              return (
-                <rect
-                  key={i}
-                  x={x}
-                  y={y}
-                  width="3"
-                  height={height}
-                  rx="1.5"
-                  className="fill-slate-800/40"
-                />
-              );
-            })}
-          </svg>
-
-          {/* Watermark Centered Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest border border-slate-800 bg-slate-950 px-3 py-1.5 rounded">
-              Awaiting Audio Upload
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden transition-all duration-300">
       {/* Header Panel */}
@@ -186,9 +136,14 @@ export default function WaveformViewer({
           </h2>
         </div>
         <div className="flex items-center gap-2">
-          {isLoading ? (
+          {!file && !externalWaveformData ? (
+            <span className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+              STANDBY
+            </span>
+          ) : isLoading ? (
             <span className="flex items-center gap-1.5 text-[10px] font-mono text-cyber-cyan animate-pulse">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyber-cyan"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-cyber-cyan animate-ping"></span>
               DECODING
             </span>
           ) : (
@@ -202,22 +157,20 @@ export default function WaveformViewer({
 
       <div className="p-6 space-y-4">
         {/* Metadata Details bar */}
-        {file && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-950/60 border border-cyber-border/40 rounded-lg text-xs font-mono">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-slate-500 uppercase shrink-0">File:</span>
-              <span className="text-slate-200 truncate font-semibold" title={file.name}>
-                {file.name}
-              </span>
-            </div>
-            <div className="flex items-center gap-4 shrink-0 text-slate-400">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 uppercase">Size:</span>
-                <span>{formatFileSize(file.size)}</span>
-              </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-950/60 border border-cyber-border/40 rounded-lg text-xs font-mono min-h-[46px]">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-slate-500 uppercase shrink-0">File:</span>
+            <span className="text-slate-200 truncate font-semibold" title={file ? file.name : 'No file selected'}>
+              {file ? file.name : '—'}
+            </span>
+          </div>
+          <div className="flex items-center gap-4 shrink-0 text-slate-400">
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 uppercase">Size:</span>
+              <span>{file ? formatFileSize(file.size) : '—'}</span>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Waveform Visualization Canvas / SVG Area */}
         <div className="p-6 bg-slate-950/40 border border-cyber-border/20 rounded-xl relative overflow-hidden flex flex-col justify-center min-h-[160px] glow-shadow-cyan">
@@ -230,7 +183,36 @@ export default function WaveformViewer({
             }}
           ></div>
 
-          {isLoading ? (
+          {!file && !externalWaveformData ? (
+            /* Standby State Waveform */
+            <div className="relative w-full h-32 flex items-center justify-center select-none">
+              <svg className="w-full h-full text-slate-800/25 animate-pulse" viewBox="0 0 500 100" preserveAspectRatio="none">
+                {[...Array(80)].map((_, i) => {
+                  const x = 5 + i * 6.2;
+                  const height = 15 + Math.sin(x * 0.05) * 8;
+                  const y = 50 - height / 2;
+                  
+                  return (
+                    <rect
+                      key={i}
+                      x={x}
+                      y={y}
+                      width="4"
+                      height={height}
+                      rx="2"
+                      className="fill-slate-800/40"
+                    />
+                  );
+                })}
+              </svg>
+              
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest border border-slate-800 bg-slate-950 px-3 py-1.5 rounded">
+                  Awaiting Audio Upload
+                </p>
+              </div>
+            </div>
+          ) : isLoading ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-3 z-10">
               <BarChart2 className="text-cyber-cyan animate-pulse" size={32} />
               <p className="text-xs font-mono text-slate-400 uppercase tracking-wider animate-pulse">
@@ -252,12 +234,9 @@ export default function WaveformViewer({
                   </linearGradient>
                 </defs>
                 {amplitudes.map((amplitude, i) => {
-                  // Center the bars vertically (y-axis centers at 50)
                   const barWidth = 4.5;
                   const barGap = 1.5;
                   const x = i * (barWidth + barGap);
-                  
-                  // Height is mapped to max 85 to leave padding
                   const height = amplitude * 85;
                   const y = 50 - height / 2;
 
