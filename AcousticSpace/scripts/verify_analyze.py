@@ -11,7 +11,7 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(__file__))
-from analyze import analyze
+from AcousticSpace.scripts.analyze import analyze
 
 
 def main(manifest_path="data/augmented/manifest.json", n_samples=20, seed=42):

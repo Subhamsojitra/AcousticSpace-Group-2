@@ -17,8 +17,8 @@ import torch
 import librosa
 from transformers import ASTForAudioClassification, ASTFeatureExtractor
 
-from breathing_detector import flag_irregular_breathing
-from acoustic_features import extract_all_acoustic_features
+from AcousticSpace.scripts.breathing_detector import flag_irregular_breathing
+from AcousticSpace.scripts.acoustic_features import extract_all_acoustic_features
 
 SR = 16000
 MODEL_PATH = os.environ.get("AST_MODEL_PATH", "results/ast_final_model")

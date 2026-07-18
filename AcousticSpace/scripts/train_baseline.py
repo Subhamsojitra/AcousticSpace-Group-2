@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from models.cnn_baseline import CNNBaseline
-from scripts.dataset import get_dataloaders
+from AcousticSpace.scripts.dataset import get_dataloaders
 
 
 def train_one_epoch(model, loader, optimizer, criterion, device):
