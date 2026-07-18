@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   FileAudio, 
   Info, 
@@ -10,7 +10,7 @@ import WaveformViewer from '../components/WaveformViewer';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadAudio, analyzeAudio, predictAudio } from '../services/api';
 
-export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
+export default function Dashboard({ apiStatus = 'checking' }) {
   const fileUpload = useFileUpload();
   const { file, error, handleFileChange, removeFile, setError } = fileUpload;
   const [pipelineMessage, setPipelineMessage] = useState('Awaiting Audio Upload');
@@ -25,6 +25,11 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
   const [breathingAnalysis, setBreathingAnalysis] = useState(null);
   const [processingTime, setProcessingTime] = useState(null);
 
+  const apiStatusRef = useRef(apiStatus);
+  useEffect(() => {
+    apiStatusRef.current = apiStatus;
+  }, [apiStatus]);
+
   const handleRetry = () => {
     setRetryKey(prev => prev + 1);
   };
@@ -38,6 +43,8 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
       setBreathingAnalysis(null);
       setFileId(null);
       setProcessingTime(null);
+      setUploading(false);
+      setAnalyzing(false);
       setPipelineMessage('Awaiting Audio Upload');
       return;
     }
@@ -68,7 +75,15 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
         
         if (!active) return;
 
+        // Perform payload schema validation for upload result
+        if (!uploadResult || typeof uploadResult !== 'object') {
+          throw new Error('Upload failed: Server returned an invalid response.');
+        }
         const fileIdVal = uploadResult.file_path || uploadResult.file_name || uploadResult.file_id;
+        if (!fileIdVal) {
+          throw new Error('Upload failed: Server response is missing file identification metadata.');
+        }
+
         setFileId(fileIdVal);
         setUploading(false);
 
@@ -94,20 +109,38 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
         analysisRes = results[0];
         predictRes = results[1];
 
+        // Perform payload schema validation for analysis and prediction results
+        if (!analysisRes || typeof analysisRes !== 'object') {
+          throw new Error('Analysis failed: Server returned an empty or invalid response.');
+        }
+        if (!analysisRes.rir_features) {
+          throw new Error('Analysis failed: Server response is missing Room Impulse Response metrics.');
+        }
+        if (!analysisRes.breathing_analysis) {
+          throw new Error('Analysis failed: Server response is missing breathing analysis metrics.');
+        }
+
+        if (!predictRes || typeof predictRes !== 'object') {
+          throw new Error('Prediction failed: Server returned an empty or invalid response.');
+        }
+        if (!predictRes.prediction) {
+          throw new Error('Prediction failed: Server response is missing prediction classification.');
+        }
+
         const endTime = performance.now();
         const elapsedSecs = ((endTime - startTime) / 1000).toFixed(2);
 
         if (!active) return;
 
         // Store returned objects in Dashboard state
-        setPrediction(predictRes?.prediction || null);
+        setPrediction(predictRes.prediction);
         setConfidence(
-          predictRes && typeof predictRes.confidence === 'number'
+          typeof predictRes.confidence === 'number'
             ? (predictRes.confidence > 1 ? predictRes.confidence / 100 : predictRes.confidence)
             : null
         );
-        setRirFeatures(analysisRes?.rir_features || null);
-        setBreathingAnalysis(analysisRes?.breathing_analysis || null);
+        setRirFeatures(analysisRes.rir_features);
+        setBreathingAnalysis(analysisRes.breathing_analysis);
         setProcessingTime(elapsedSecs);
 
         setPipelineMessage(`Analysis completed in ${elapsedSecs}s.`);
@@ -122,7 +155,7 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
           
           let readableMessage = err.message || 'An unexpected error occurred during processing.';
           if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('network error') || err.message.includes('Failed to upload'))) {
-            if (apiStatus === 'offline') {
+            if (apiStatusRef.current === 'offline') {
               readableMessage = 'API Gateway is offline. Please make sure the backend is running and online.';
             } else {
               readableMessage = 'Network connection failed. Please check your network connectivity and try again.';
@@ -144,7 +177,7 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
       active = false;
       abortController.abort();
     };
-  }, [file, retryKey, setError, apiStatus]);
+  }, [file, retryKey, setError]);
 
   const scannerValue = apiStatus === 'checking' ? 'Checking...' : apiStatus === 'online' ? 'Online' : 'Offline';
   const scannerChange = apiStatus === 'checking'
@@ -237,10 +270,10 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
       </section>
 
       {/* Main Grid: Upload & Waveform (Left), Report Status (Right) */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column: Upload Dropzone & Waveform visualizer */}
-        <div className="xl:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-8">
           
           {/* Audio Upload Portal */}
           <AudioUpload 
@@ -319,7 +352,7 @@ export default function Dashboard({ apiStatus = 'checking', _latency = null }) {
                           : 'Scan Pipeline Ready'}
                 </h3>
                 
-                <p className="text-xs text-slate-400 max-w-[220px] mt-2 leading-relaxed z-10">
+                <p className="text-xs text-slate-400 max-w-xs mt-2 leading-relaxed z-10">
                   {error && !uploading && !analyzing
                     ? error
                     : uploading
