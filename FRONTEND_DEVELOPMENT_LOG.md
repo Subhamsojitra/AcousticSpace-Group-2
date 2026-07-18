@@ -269,3 +269,41 @@ Tested integration with the running FastAPI backend.
 ## Observation:
 During testing, the same audio file occasionally produced different prediction results (e.g., Fake on one run and Real on another).
 This observation was shared with the team for further investigation during integration testing.
+
+## Day 9 – Frontend Integration, Stability & Dashboard Polish
+## Objectives
+Improve dashboard stability.
+Prevent unnecessary pipeline execution.
+Enhance responsive layout.
+Strengthen frontend validation.
+Improve user experience during upload and analysis.
+
+## Completed Work
+Decoupled pipeline execution from API status polling.
+Added frontend validation for backend response payloads.
+Reset loading states correctly after cancellation.
+Improved dashboard spacing and responsiveness.
+Updated Audio Upload component layout for smaller screens.
+Cleaned unused frontend code.
+Verified upload, analysis, prediction, cancel and retry workflows.
+
+## Manual Testing
+Backend online verification.
+Backend offline verification.
+Upload validation.
+Cancel workflow.
+Retry workflow.
+Page refresh behavior.
+Responsive layout verification.
+
+## Build Verification
+npm run lint
+npm run build
+
+## Issues Observed
+Same audio file occasionally produced different prediction results during separate runs (Real/Fake).
+Shared observation with the team for backend/model verification.
+During local testing, frontend initially launched on port 5174 because an older Vite process was still occupying port 5173. This caused a CORS issue until the stale process was terminated. After restarting on port 5173, the frontend and backend communicated correctly and the dashboard status returned to Online. No frontend code changes were required for this issue.
+
+## Status
+Day 9 Completed

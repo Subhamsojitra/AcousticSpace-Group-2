@@ -208,7 +208,7 @@ export default function AudioUpload({
             </div>
 
             {/* Technical Detail Grid */}
-            <div className="pt-4 border-t border-cyber-border/40 grid grid-cols-2 gap-4 text-[11px] font-mono">
+            <div className="pt-4 border-t border-cyber-border/40 grid grid-cols-1 sm:grid-cols-2 gap-4 text-[11px] font-mono">
               <div className="space-y-1">
                 <span className="text-slate-500 uppercase tracking-wider block text-[9px]">MIME Type</span>
                 <span className="text-slate-300 block truncate">{file.type || 'audio/unknown'}</span>
