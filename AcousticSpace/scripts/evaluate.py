@@ -119,7 +119,7 @@ def test_mismatch_sensitivity(model, real_voice_wrong_room_samples, device):
 if __name__ == "__main__":
     import argparse
     from models.cnn_baseline import CNNBaseline
-    from scripts.dataset import get_dataloaders
+    from AcousticSpace.scripts.dataset import get_dataloaders
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest_path", default="data/augmented/manifest.json")

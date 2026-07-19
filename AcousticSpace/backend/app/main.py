@@ -34,13 +34,32 @@ async def lifespan(app: FastAPI):
     # Initialize DB tables.
     Base.metadata.create_all(bind=engine)
 
-    # Initialize app state for future ML model integration
-    # Models will be loaded when ready (currently using mock predictions)
+    # Initialize app state for ML model integration
     app.state.cnn_model = None
     app.state.ast_model = None
+    app.state.feature_extractor = None
     app.state.model_ready = False
 
-    logger.info("Backend started successfully. Using mock predictions for integration testing.")
+    # Load AST model if available
+    try:
+        import torch
+        from transformers import ASTForAudioClassification, ASTFeatureExtractor
+        
+        model_path = settings.AST_MODEL_PATH
+        logger.info(f"Loading AST model from {model_path}...")
+        
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        app.state.ast_model = ASTForAudioClassification.from_pretrained(model_path).to(device)
+        app.state.ast_model.eval()
+        app.state.feature_extractor = ASTFeatureExtractor.from_pretrained(model_path)
+        app.state.model_ready = True
+        
+        logger.info(f"AST model loaded successfully on {device}")
+    except Exception as e:
+        logger.warning(f"Failed to load AST model: {e}. Using mock predictions.")
+        app.state.ast_model = None
+        app.state.feature_extractor = None
+        app.state.model_ready = False
 
     yield
 

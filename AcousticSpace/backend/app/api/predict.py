@@ -15,7 +15,7 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from app.api.schemas import PredictionResponse
@@ -26,7 +26,7 @@ from app.services.audio_loader import load_audio
 from app.services.breathing_analysis import analyze_breathing
 from app.services.feature_extractor import extract_features
 from app.services.inference import predict_audio
-from app.services.mock_prediction import predict
+from app.services.mock_prediction import predict as mock_predict
 from app.services.preprocessing import preprocess_audio
 from app.services.rir_extractor import extract_rir_features
 
@@ -38,7 +38,7 @@ class PredictionRequestModel(BaseModel):
 
 
 @router.post("/", response_model=PredictionResponse)
-async def predict(request: PredictionRequestModel, db=Depends(get_db)) -> PredictionResponse:
+async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_db)) -> PredictionResponse:
     """Predict whether an audio file is Real or Fake."""
 
     start = time.perf_counter()
@@ -75,15 +75,53 @@ async def predict(request: PredictionRequestModel, db=Depends(get_db)) -> Predic
         t_breathing = time.perf_counter() - t0
         log_info(f"Breathing analysis completed in {t_breathing:.2f}s")
 
-        # Step 6: Generate prediction (mock or real)
+        # Step 6: Generate prediction (real AST model or mock)
         t0 = time.perf_counter()
         processing_time_so_far = time.perf_counter() - start
-        prediction_result = predict(
-            acoustic_features=acoustic_features,
-            rir_features=rir_features,
-            breathing_features=breathing_features,
-            processing_time=processing_time_so_far,
-        )
+        
+        # Check if real model is available
+        if req.app.state.model_ready and req.app.state.ast_model is not None:
+            # Use real AST model inference
+            import librosa
+            import torch
+            import numpy as np
+            
+            # Load audio for AST model (AST expects raw audio, not features)
+            audio_for_ast, _ = librosa.load(request.file_path, sr=16000, mono=True)
+            
+            # Prepare inputs for AST
+            inputs = req.app.state.feature_extractor(
+                audio_for_ast, 
+                sampling_rate=16000, 
+                return_tensors="pt"
+            )
+            input_values = inputs["input_values"].to(req.app.state.ast_model.device)
+            
+            # Run inference
+            with torch.no_grad():
+                outputs = req.app.state.ast_model(input_values)
+                probs = torch.softmax(outputs.logits, dim=1)[0]
+                confidence_score = probs[1].item()  # probability of class 1 = fake
+                prediction = "Fake" if confidence_score > 0.5 else "Real"
+                confidence = round(confidence_score * 100, 2)
+            
+            prediction_result = {
+                "prediction": prediction,
+                "confidence": confidence,
+                "rir_score": None,
+                "breathing_score": None,
+                "processing_time": f"{processing_time_so_far:.2f}s",
+                "status": "completed",
+            }
+        else:
+            # Use mock prediction
+            prediction_result = mock_predict(
+                acoustic_features=acoustic_features,
+                rir_features=rir_features,
+                breathing_features=breathing_features,
+                processing_time=processing_time_so_far,
+            )
+        
         t_prediction = time.perf_counter() - t0
         log_info(f"Prediction generated in {t_prediction:.2f}s")
 

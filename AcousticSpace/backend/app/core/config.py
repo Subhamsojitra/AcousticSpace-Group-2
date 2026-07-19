@@ -2,6 +2,10 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Compute absolute path to ast_final_model directory
+# parents[3] goes from: config.py -> core -> app -> backend -> AcousticSpace (repo root)
+_AST_MODEL_PATH = str(Path(__file__).resolve().parents[3] / "results" / "ast_final_model")
+
 
 class Settings(BaseSettings):
     """
@@ -30,6 +34,13 @@ class Settings(BaseSettings):
     FEATURE_DIR: str = "backend/extracted_features"
     MODEL_DIR: str = "backend/saved_models"
     LOG_DIR: str = "backend/logs"
+
+    # -----------------------------------
+    # AST Model (Hugging Face)
+    # -----------------------------------
+    # Path to the trained AST model directory (absolute path)
+    # Computed at module level to avoid HuggingFace repo ID interpretation
+    AST_MODEL_PATH: str = _AST_MODEL_PATH
 
     # -----------------------------------
     # Database

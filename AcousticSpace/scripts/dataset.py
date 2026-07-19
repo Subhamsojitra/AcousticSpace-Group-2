@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from features import extract_features_from_file
+from AcousticSpace.scripts.features import extract_features_from_file
 
 
 class AcousticSpaceDataset(Dataset):

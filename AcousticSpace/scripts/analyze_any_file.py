@@ -12,7 +12,7 @@ import tempfile
 import argparse
 
 sys.path.append(os.path.dirname(__file__))
-from analyze import analyze
+from AcousticSpace.scripts.analyze import analyze
 
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".wmv"}
 AUDIO_EXTENSIONS = {".wav", ".flac", ".mp3", ".ogg", ".m4a", ".aac"}
