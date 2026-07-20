@@ -90,3 +90,247 @@ this scope explicitly in your report.
 
 - **ASVspoof 2019** (real vs. fake speech): https://www.kaggle.com/datasets/awsaf49/asvpoof-2019-dataset
 - **OpenSLR SLR28** (Room Impulse Responses): https://www.openslr.org/28/
+
+
+
+# Backend (FastAPI)
+
+The backend of AcousticSpace is built using **FastAPI** and serves as the bridge between the frontend and the machine learning model. It provides REST APIs for audio upload, preprocessing, feature extraction, deepfake prediction, and prediction history while integrating seamlessly with the trained Audio Spectrogram Transformer (AST) model.
+
+---
+
+## Backend Features
+
+- FastAPI REST API
+- Audio Upload & Validation
+- Feature Extraction Pipeline
+- Acoustic Feature Analysis
+- Breathing Pattern Analysis
+- AST Model Integration
+- Deepfake Prediction API
+- SQLite Database Support
+- Prediction History
+- Centralized Logging
+- Configuration Management
+- Swagger API Documentation
+
+---
+
+## Backend Structure
+
+```text
+backend/
+│
+├── app/
+│   ├── api/                 # REST API endpoints
+│   ├── core/                # Configuration and logging
+│   ├── database/            # Database models and connection
+│   ├── services/            # Business logic and ML inference
+│   ├── models/              # Response and request schemas
+│   ├── utils/               # Helper functions
+│   └── main.py              # FastAPI application
+│
+├── uploads/                 # Uploaded audio files
+├── extracted_features/      # Generated audio features
+├── saved_models/            # Local model storage
+├── logs/                    # Application logs
+└── requirements.txt
+```
+
+---
+
+# Backend Workflow
+
+```
+Frontend
+     │
+     ▼
+Upload Audio
+     │
+     ▼
+FastAPI Backend
+     │
+     ▼
+Audio Validation
+     │
+     ▼
+Feature Extraction
+     │
+     ▼
+Acoustic Feature Analysis
+     │
+     ▼
+Breathing Detection
+     │
+     ▼
+AST Model Inference
+     │
+     ▼
+Prediction Generation
+     │
+     ▼
+JSON Response
+```
+
+---
+
+# API Endpoints
+
+## Health Check
+
+```http
+GET /
+```
+
+Returns the backend status.
+
+---
+
+## Upload Audio
+
+```http
+POST /upload
+```
+
+Uploads an audio file for analysis.
+
+Supported formats
+
+- WAV
+- MP3
+- FLAC
+- M4A
+
+Example Response
+
+```json
+{
+    "filename": "sample.wav",
+    "status": "uploaded"
+}
+```
+
+---
+
+## Predict Deepfake
+
+```http
+POST /predict
+```
+
+Runs the complete inference pipeline and returns the prediction.
+
+Example Response
+
+```json
+{
+    "prediction": "Fake",
+    "confidence": 99.91,
+    "rir_score": 0.91,
+    "breathing_score": 0.87,
+    "processing_time": 2.4
+}
+```
+
+---
+
+## Prediction History
+
+```http
+GET /history
+```
+
+Returns previously analyzed audio records.
+
+---
+
+# Running the Backend
+
+## Create Virtual Environment
+
+```bash
+python -m venv venv
+```
+
+## Activate Environment
+
+### Windows
+
+```bash
+venv\Scripts\activate
+```
+
+### Linux / macOS
+
+```bash
+source venv/bin/activate
+```
+
+---
+
+## Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Run Backend
+
+```bash
+cd backend
+uvicorn app.main:app --reload
+```
+
+The backend will start on:
+
+```
+http://127.0.0.1:8000
+```
+
+Swagger Documentation:
+
+```
+http://127.0.0.1:8000/docs
+```
+
+ReDoc Documentation:
+
+```
+http://127.0.0.1:8000/redoc
+```
+
+---
+
+# Backend Technologies
+
+- Python 3.11
+- FastAPI
+- Uvicorn
+- SQLAlchemy
+- SQLite
+- Pydantic
+- Librosa
+- NumPy
+- PyTorch
+- Hugging Face Transformers
+- Logging
+
+---
+
+# Backend Responsibilities
+
+The backend is responsible for:
+
+- Accepting audio uploads from the frontend.
+- Validating uploaded audio files.
+- Performing audio preprocessing.
+- Extracting acoustic features.
+- Running breathing pattern analysis.
+- Loading the trained AST model.
+- Performing deepfake prediction.
+- Returning prediction results to the frontend.
+- Storing prediction history.
+- Providing REST APIs for frontend integration.
+- Managing logs and application configuration.
