@@ -1,15 +1,13 @@
 import React, { useRef, useState } from 'react';
-import { UploadCloud, FileAudio, Trash2, ShieldAlert, Loader2 } from 'lucide-react';
+import { UploadCloud, FileAudio, Trash2, Loader2 } from 'lucide-react';
 import { formatFileSize } from '../utils/fileValidation';
 
 export default function AudioUpload({
   file = null,
-  error = null,
   handleFileChange = () => {},
   removeFile = () => {},
   uploading = false,
   fileId = null,
-  handleRetry = null,
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
@@ -76,31 +74,7 @@ export default function AudioUpload({
       </div>
 
       <div className="p-8 space-y-6">
-        {/* Error State Banner */}
-        {error && (
-          <div className="flex items-start justify-between gap-3 p-4 bg-cyber-rose-glow border border-cyber-rose/30 rounded-lg text-slate-200 animate-fadeIn glow-shadow-rose">
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="text-cyber-rose shrink-0 mt-0.5" size={18} />
-              <div className="space-y-1">
-                <h4 className="text-xs font-mono font-bold text-cyber-rose uppercase tracking-wide">
-                  Security Scan Warning
-                </h4>
-                <p className="text-xs text-slate-300">
-                  {error}
-                </p>
-              </div>
-            </div>
-            {file && !uploading && handleRetry && (
-              <button
-                type="button"
-                onClick={handleRetry}
-                className="px-2.5 py-1 rounded bg-cyber-rose/20 hover:bg-cyber-rose/30 text-cyber-rose border border-cyber-rose/30 hover:border-cyber-rose/50 font-mono text-xs font-bold transition-all cursor-pointer self-center shrink-0 uppercase tracking-wider"
-              >
-                Retry
-              </button>
-            )}
-          </div>
-        )}
+
 
         {/* Hidden File Input */}
         <input
@@ -199,11 +173,12 @@ export default function AudioUpload({
               <button
                 type="button"
                 onClick={removeFile}
-                className="p-2 px-3 rounded-lg border border-cyber-rose/30 bg-cyber-rose-glow/20 text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 transition-all duration-200 cursor-pointer flex items-center gap-1.5 font-mono text-xs font-bold shrink-0"
-                title={uploading ? "Cancel Scan & Remove File" : "Remove File"}
+                disabled={uploading}
+                className="p-2 px-3 rounded-lg border border-cyber-rose/30 bg-cyber-rose-glow/20 text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-cyber-rose-glow/20 disabled:hover:text-cyber-rose transition-all duration-200 cursor-pointer flex items-center gap-1.5 font-mono text-xs font-bold shrink-0"
+                title="Remove File"
               >
                 <Trash2 size={14} />
-                {uploading ? <span>CANCEL</span> : <span>REMOVE</span>}
+                <span>REMOVE</span>
               </button>
             </div>
 
