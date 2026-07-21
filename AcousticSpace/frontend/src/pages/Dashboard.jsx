@@ -16,7 +16,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
   const fileUpload = useFileUpload();
   const { file, error: uploadError, handleFileChange, removeFile, setError } = fileUpload;
 
-  // Pipeline execution stages: 'idle' | 'uploading' | 'extracting' | 'detecting' | 'generating' | 'completed' | 'failed'
+  // Pipeline execution stages: 'idle' | 'uploading' | 'extracting' | 'predicting' | 'completed' | 'failed'
   const [stage, setStage] = useState('idle');
   const [pipelineMessage, setPipelineMessage] = useState('Awaiting Audio Upload');
   const [fileId, setFileId] = useState(null);
@@ -66,7 +66,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
     if (!file) return;
 
     // Prevent duplicate requests
-    if (stage === 'uploading' || stage === 'extracting' || stage === 'detecting' || stage === 'generating') {
+    if (stage === 'uploading' || stage === 'extracting' || stage === 'predicting') {
       return;
     }
 
@@ -115,8 +115,11 @@ export default function Dashboard({ apiStatus = 'checking' }) {
         throw new Error('Analysis failed: Server response is missing breathing analysis metrics.');
       }
 
-      // 3. Detection stage
-      setStage('detecting');
+      setRirFeatures(analysisRes.rir_features);
+      setBreathingAnalysis(analysisRes.breathing_analysis);
+
+      // 3. Predicting stage
+      setStage('predicting');
       setPipelineMessage('Running deepfake classification weights...');
       const predictRes = await predictAudio(fileIdVal);
 
@@ -128,20 +131,13 @@ export default function Dashboard({ apiStatus = 'checking' }) {
         throw new Error('Prediction failed: Server response is missing prediction classification.');
       }
 
-      // 4. Generating report stage
-      setStage('generating');
-      setPipelineMessage('Compiling acoustic integrity signatures...');
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
       const endTime = performance.now();
       const elapsedSecs = ((endTime - startTime) / 1000).toFixed(2);
 
-      // Store returned objects in Dashboard state
+      // Store returned objects in Dashboard state (only passing confirmed predict response data to child components)
       setPrediction(predictRes.prediction);
       setConfidence(predictRes.confidence);
       setAnalysisInfo(predictRes.analysis);
-      setRirFeatures(analysisRes.rir_features);
-      setBreathingAnalysis(analysisRes.breathing_analysis);
       setProcessingTime(elapsedSecs);
       setTimestamp(new Date().toLocaleString());
 
@@ -192,7 +188,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
           : 'gray';
 
   // Determine dashboard inputs and interaction lock state
-  const isRunning = stage === 'uploading' || stage === 'extracting' || stage === 'detecting' || stage === 'generating';
+  const isRunning = stage === 'uploading' || stage === 'extracting' || stage === 'predicting';
 
   return (
     <div className="space-y-8 animate-fadeIn relative">

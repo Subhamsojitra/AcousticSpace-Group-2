@@ -13,8 +13,7 @@ export default function AnalysisProgress({ currentStage, error = null }) {
   const stages = [
     { id: 'uploading', label: 'Uploading Audio', description: 'Transmitting payload to secure gateway' },
     { id: 'extracting', label: 'Extracting Acoustic Features', description: 'Calculating Room Impulse Response metrics' },
-    { id: 'detecting', label: 'Running Deepfake Detection', description: 'AST model classification inference' },
-    { id: 'generating', label: 'Generating Final Report', description: 'Compiling spectral anomaly signatures' },
+    { id: 'predicting', label: 'Running Deepfake Detection', description: 'AST model classification inference' },
   ];
 
   const getStageIndex = (stageId) => {

@@ -376,3 +376,26 @@ Both completed successfully.
 
 ## status:
 Day 10 completed
+
+
+### Day 11 – Dashboard State Machine Refactoring & Predict Workflow UX Alignment
+
+## Objective
+- Refactor `Dashboard.jsx` state management into a cleaner state machine with proper pipeline stage tracking (`idle`, `uploading`, `extracting`, `predicting`, `completed`, `failed`).
+- Align related components (`AnalysisProgress.jsx` and `StatusBadge.jsx`) with the updated stages.
+- Implement robust retry trigger flow and clean data pass-through.
+
+## Implementation Summary
+- Refactored pipeline stage tracking in `Dashboard.jsx` to map directly to the 6 requested states: `idle`, `uploading`, `extracting`, `predicting`, `completed`, and `failed`.
+- Updated interactive lock and duplicate request prevention using the updated stages.
+- Cleaned up data pass-through to ensure only confirmed fields returned by `/api/predict` (`prediction`, `confidence`, `analysis` containing `sample_rate` and `duration`) are passed to child components.
+- Modified `AnalysisProgress.jsx` to track the updated stages list (`uploading`, `extracting`, `predicting`).
+- Updated `StatusBadge.jsx` to correctly map the `'predicting'` stage theme.
+
+## Verification
+- Completed:
+  - `npm run lint` -> Found 0 warnings and 0 errors.
+  - `npm run build` -> Succeeded with a clean production build (280.45 kB bundle).
+
+## status:
+Day 11 completed
