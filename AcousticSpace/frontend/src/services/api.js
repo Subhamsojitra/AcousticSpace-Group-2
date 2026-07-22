@@ -1,63 +1,6 @@
-import { API_BASE_URL } from '../config/apiConfig';
+import { makeRequest, ApiError } from './apiHelpers';
 
-/**
- * Custom error class for API responses that do not have 2xx status codes.
- */
-export class ApiError extends Error {
-  constructor(message, status, data) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.data = data;
-  }
-}
-
-/**
- * Helper to process the fetch response, parsing JSON and checking response.ok.
- */
-async function handleResponse(response) {
-  let data = null;
-  const contentType = response.headers.get('content-type');
-  
-  if (contentType && contentType.includes('application/json')) {
-    data = await response.json().catch(() => null);
-  } else {
-    data = await response.text().catch(() => null);
-  }
-
-  if (!response.ok) {
-    let message = '';
-    if (data) {
-      if (typeof data === 'string') {
-        message = data;
-      } else if (typeof data === 'object') {
-        if (data.message) {
-          message = String(data.message);
-        } else if (data.detail) {
-          if (Array.isArray(data.detail)) {
-            // Format FastAPI array of details nicely
-            message = data.detail.map(item => {
-              if (typeof item === 'string') return item;
-              const path = item.loc ? item.loc.join('.') : '';
-              const msg = item.msg || JSON.stringify(item);
-              return path ? `${path}: ${msg}` : msg;
-            }).join(', ');
-          } else if (typeof data.detail === 'object') {
-            message = JSON.stringify(data.detail);
-          } else {
-            message = String(data.detail);
-          }
-        }
-      }
-    }
-    if (!message) {
-      message = `Request failed with status ${response.status}`;
-    }
-    throw new ApiError(message, response.status, data);
-  }
-
-  return data;
-}
+export { ApiError };
 
 /**
  * Uploads an audio file to the backend.
@@ -73,14 +16,12 @@ export async function uploadAudio(file, signal) {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/api/upload/`, {
+  return makeRequest('/api/upload/', {
     method: 'POST',
     body: formData,
     signal,
     // Note: Do not set Content-Type header; the browser will set it with the multipart boundary.
   });
-
-  return handleResponse(response);
 }
 
 /**
@@ -94,7 +35,7 @@ export async function analyzeAudio(filePath, signal) {
     throw new Error('No file_path provided for analysis.');
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/analysis/`, {
+  return makeRequest('/api/analysis/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -102,8 +43,6 @@ export async function analyzeAudio(filePath, signal) {
     body: JSON.stringify({ file_path: filePath }),
     signal,
   });
-
-  return handleResponse(response);
 }
 
 /**
@@ -117,7 +56,7 @@ export async function predictAudio(filePath, signal) {
     throw new Error('No file_path provided for prediction.');
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/predict/`, {
+  return makeRequest('/api/predict/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -125,8 +64,6 @@ export async function predictAudio(filePath, signal) {
     body: JSON.stringify({ file_path: filePath }),
     signal,
   });
-
-  return handleResponse(response);
 }
 
 /**
@@ -134,10 +71,7 @@ export async function predictAudio(filePath, signal) {
  * @returns {Promise<Object>} Object containing the array of previous analyses.
  */
 export async function getHistory() {
-  const response = await fetch(`${API_BASE_URL}/api/history/`, {
+  return makeRequest('/api/history/', {
     method: 'GET',
   });
-
-  return handleResponse(response);
 }
-

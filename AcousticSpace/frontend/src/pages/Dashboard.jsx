@@ -8,6 +8,7 @@ import AudioUpload from '../components/AudioUpload';
 import WaveformViewer from '../components/WaveformViewer';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadAudio, analyzeAudio, predictAudio } from '../services/api';
+import { getErrorMessage } from '../services/apiHelpers';
 import ErrorAlert from '../components/ErrorAlert';
 import PredictionCard from '../components/PredictionCard';
 import LoadingOverlay from '../components/LoadingOverlay';
@@ -148,14 +149,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
       setStage('failed');
       setPipelineMessage('Scan pipeline failed.');
       
-      let readableMessage = err.message || 'An unexpected error occurred during processing.';
-      if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('network error') || err.message.includes('Failed to upload'))) {
-        if (apiStatusRef.current === 'offline') {
-          readableMessage = 'API Gateway is offline. Please make sure the backend is running and online.';
-        } else {
-          readableMessage = 'Network connection failed. Please check your network connectivity and try again.';
-        }
-      }
+      const readableMessage = getErrorMessage(err, apiStatusRef.current);
       setError(readableMessage);
     }
   };
