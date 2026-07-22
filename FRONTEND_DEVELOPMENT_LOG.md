@@ -399,3 +399,33 @@ Day 10 completed
 
 ## status:
 Day 11 completed
+
+
+### Day 12 – Frontend Architecture Refinement & API Layer Cleanup
+
+## Objective
+- Refactor repeated request logic into reusable helper utilities and centralize request configuration while keeping API contracts consistent.
+- Parse backend error responses, normalize network failures, and keep the dashboard component free from raw request parsing and connection formatting logic.
+- Keep `ErrorAlert.jsx` presentational and handle defensive rendering in `PredictionCard.jsx` for `/api/predict` response fields.
+
+## Implementation Summary
+- **Centralized API Helper (`services/apiHelpers.js`)**:
+  - Implemented custom `ApiError` class to encapsulate HTTP status codes, data payloads, and network error flags.
+  - Built `handleResponse` for unified JSON/Text extraction, automatic parsing of FastAPI structural validation details, and custom error formats.
+  - Built `makeRequest` to execute `fetch` calls, dry up request headers/options, and wrap TypeErrors into flag-tracked network failures.
+  - Built `getErrorMessage` to cleanly format runtime errors and network/disconnect prompts based on gateway status.
+- **API Service Optimization (`services/api.js`)**:
+  - Imported `makeRequest` and `ApiError` to eliminate duplicate fetch templates in `uploadAudio`, `analyzeAudio`, `predictAudio`, and `getHistory`, preserving the original API contracts.
+- **Dashboard Cleanup (`pages/Dashboard.jsx`)**:
+  - Refactored `runPipeline`'s verbose error handling block to use the centralized `getErrorMessage` helper, passing down standardized string messages to `ErrorAlert`.
+- **Defensive Prediction Card (`components/PredictionCard.jsx`)**:
+  - Removed unused extensible acoustic diagnostics code blocks to align exactly with fields confirmed by the current `/api/predict` contract (`prediction`, `confidence`, `sample_rate`, and `duration`).
+  - Implemented protective guards (e.g. status checking before casing string methods) to avoid rendering-crashes on malformed or empty responses.
+
+## Verification
+- Completed:
+  - `npm run lint` -> Found 0 warnings and 0 errors.
+  - `npm run build` -> Succeeded with a clean production build (278.47 kB bundle).
+
+## status:
+Day 12 completed
