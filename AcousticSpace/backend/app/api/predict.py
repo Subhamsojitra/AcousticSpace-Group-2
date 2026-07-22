@@ -24,6 +24,7 @@ from app.database.db import get_db
 from app.database.models import History
 from app.services.audio_loader import load_audio
 from app.services.breathing_analysis import analyze_breathing
+from app.services.cadence_alignment import analyze_cadence_alignment
 from app.services.feature_extractor import extract_features
 from app.services.inference import predict_audio
 from app.services.mock_prediction import predict as mock_predict
@@ -75,6 +76,12 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
         t_breathing = time.perf_counter() - t0
         log_info(f"Breathing analysis completed in {t_breathing:.2f}s")
 
+        # Step 5b: Cadence alignment analysis
+        t0 = time.perf_counter()
+        cadence_features = analyze_cadence_alignment(processed_audio, sample_rate)
+        t_cadence = time.perf_counter() - t0
+        log_info(f"Cadence alignment analysis completed in {t_cadence:.2f}s")
+
         # Step 6: Generate prediction (real AST model or mock)
         t0 = time.perf_counter()
         processing_time_so_far = time.perf_counter() - start
@@ -110,6 +117,8 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
                 "confidence": confidence,
                 "rir_score": None,
                 "breathing_score": None,
+                "alignment_score": cadence_features.get("alignment_score"),
+                "cadence": cadence_features.get("cadence"),
                 "processing_time": f"{processing_time_so_far:.2f}s",
                 "status": "completed",
             }
@@ -119,6 +128,7 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
                 acoustic_features=acoustic_features,
                 rir_features=rir_features,
                 breathing_features=breathing_features,
+                cadence_features=cadence_features,
                 processing_time=processing_time_so_far,
             )
         
@@ -133,8 +143,8 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
         log_info(
             f"Timing breakdown - Load: {t_load:.2f}s, Preprocess: {t_preprocess:.2f}s, "
             f"Features: {t_features:.2f}s, RIR: {t_rir:.2f}s, "
-            f"Breathing: {t_breathing:.2f}s, Prediction: {t_prediction:.2f}s, "
-            f"Total: {processing_time:.2f}s"
+            f"Breathing: {t_breathing:.2f}s, Cadence: {t_cadence:.2f}s, "
+            f"Prediction: {t_prediction:.2f}s, Total: {processing_time:.2f}s"
         )
 
         filename = __import__("pathlib").Path(request.file_path).name
@@ -152,14 +162,28 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
         db.add(record)
         db.commit()
 
-        log_info(f"Prediction completed: {prediction_result.get('prediction')} "
-                 f"(confidence={prediction_result.get('confidence')}%)")
+        # Log detailed prediction results including cadence metrics
+        alignment_score = prediction_result.get("alignment_score", "N/A")
+        cadence_label = prediction_result.get("cadence", "N/A")
+        log_info(
+            f"Prediction completed: {prediction_result.get('prediction')} "
+            f"(confidence={prediction_result.get('confidence')}%, "
+            f"alignment_score={alignment_score}, "
+            f"cadence={cadence_label})"
+        )
 
         return PredictionResponse(
             message="Prediction completed successfully.",
             prediction=prediction_result["prediction"],
             confidence=float(prediction_result["confidence"]),
-            analysis={"sample_rate": sample_rate, "duration": duration},
+            analysis={
+                "sample_rate": sample_rate, 
+                "duration": duration,
+                "rir_score": prediction_result.get("rir_score"),
+                "breathing_score": prediction_result.get("breathing_score"),
+                "alignment_score": prediction_result.get("alignment_score"),
+                "cadence": prediction_result.get("cadence"),
+            },
         )
 
     except HTTPException:

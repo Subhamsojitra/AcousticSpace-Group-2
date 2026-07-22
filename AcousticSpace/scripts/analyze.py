@@ -19,6 +19,7 @@ from transformers import ASTForAudioClassification, ASTFeatureExtractor
 
 from AcousticSpace.scripts.breathing_detector import flag_irregular_breathing
 from AcousticSpace.scripts.acoustic_features import extract_all_acoustic_features
+from AcousticSpace.scripts.cadence_alignment import analyze_breathing_alignment
 
 SR = 16000
 MODEL_PATH = os.environ.get("AST_MODEL_PATH", "results/ast_final_model")
@@ -75,7 +76,21 @@ def analyze(audio_path):
     # --- Secondary signal: breathing heuristic (VAD-based, v2) ---
     breathing_result = flag_irregular_breathing(audio, sr=SR)
 
-    # --- Tertiary signal: blind acoustic features (RT60/DRR/clarity) ---
+    # --- Tertiary signal: breathing cadence alignment ---
+    try:
+        cadence_result = analyze_breathing_alignment(audio_path)
+    except Exception as e:
+        print(f"Warning: Cadence alignment analysis failed: {e}")
+        cadence_result = {
+            "alignment_score": 0.0,
+            "cadence": "Error",
+            "breath_count": 0,
+            "syllable_count": 0,
+            "regularity": 0.0,
+            "mean_offset": 0.0,
+        }
+
+    # --- Quaternary signal: blind acoustic features (RT60/DRR/clarity) ---
     # These are diagnostic/explainable evidence for the analyst dashboard.
     # Not yet fused into the AST model's decision (see FusionClassifier stub
     # in acoustic_features.py for the extension path if retraining time allows).
@@ -87,6 +102,7 @@ def analyze(audio_path):
         "reverb_mismatch_flag": reverb_mismatch_flag,
         "breathing_flag": breathing_result["breathing_flag"],
         "breathing_details": breathing_result,
+        "breathing_alignment": cadence_result,
         "acoustic_features": acoustic_result,
     }
 

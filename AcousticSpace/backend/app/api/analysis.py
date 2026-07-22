@@ -83,6 +83,13 @@ async def analyze_audio(
         t_breathing = time.perf_counter() - t0
         log_info(f"Breathing analysis completed in {t_breathing:.2f}s")
 
+        # Step 6: Breathing cadence alignment analysis
+        t0 = time.perf_counter()
+        from app.services.cadence_alignment import analyze_cadence_alignment
+        cadence_features = analyze_cadence_alignment(processed_audio, sample_rate)
+        t_cadence = time.perf_counter() - t0
+        log_info(f"Cadence alignment completed in {t_cadence:.2f}s")
+
         processing_time = round(time.perf_counter() - start, 4)
         duration = get_audio_duration(processed_audio, sample_rate)
 
@@ -90,7 +97,8 @@ async def analyze_audio(
         log_info(
             f"Timing breakdown - Load: {t_load:.2f}s, Preprocess: {t_preprocess:.2f}s, "
             f"Features: {t_features:.2f}s, RIR: {t_rir:.2f}s, "
-            f"Breathing: {t_breathing:.2f}s, Total: {processing_time:.2f}s"
+            f"Breathing: {t_breathing:.2f}s, Cadence: {t_cadence:.2f}s, "
+            f"Total: {processing_time:.2f}s"
         )
 
         # Persist to history (prediction fields remain null for /analysis)
@@ -118,6 +126,7 @@ async def analyze_audio(
             features=features,
             rir_features=rir_features,
             breathing_analysis=breathing_features,
+            breathing_alignment=cadence_features,
         )
 
     except HTTPException:

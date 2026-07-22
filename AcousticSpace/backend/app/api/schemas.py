@@ -41,6 +41,7 @@ class AnalysisResponse(BaseModel):
     features: Dict[str, Any]
     rir_features: Dict[str, Any]
     breathing_analysis: Dict[str, Any]
+    breathing_alignment: Dict[str, Any]
 
 
 class PredictionResponse(BaseModel):
@@ -53,6 +54,10 @@ class PredictionResponse(BaseModel):
     confidence: float
 
     analysis: AnalysisAudioInfo
+    rir_score: Optional[float] = None
+    breathing_score: Optional[float] = None
+    alignment_score: Optional[float] = None
+    cadence: Optional[str] = None
 
 
 class HistoryItem(BaseModel):
