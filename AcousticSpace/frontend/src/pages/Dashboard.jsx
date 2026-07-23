@@ -10,7 +10,7 @@ import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadAudio, analyzeAudio, predictAudio } from '../services/api';
 import { getErrorMessage } from '../services/apiHelpers';
 import ErrorAlert from '../components/ErrorAlert';
-import PredictionCard from '../components/PredictionCard';
+import PredictionCard, { PredictionCardSkeleton } from '../components/PredictionCard';
 import LoadingOverlay from '../components/LoadingOverlay';
 
 export default function Dashboard({ apiStatus = 'checking' }) {
@@ -288,6 +288,9 @@ export default function Dashboard({ apiStatus = 'checking' }) {
               processingTime={processingTime}
               analysis={analysisInfo}
             />
+          ) : isRunning ? (
+            /* Skeleton Loading State inside the prediction/result container to prevent layout shift */
+            <PredictionCardSkeleton />
           ) : file ? (
             /* Ready to Scan State */
             <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden h-full flex flex-col justify-between p-6 min-h-[400px]">
@@ -330,32 +333,44 @@ export default function Dashboard({ apiStatus = 'checking' }) {
               </div>
             </div>
           ) : (
-            /* Standby Card State */
+            /* Standby Card State - Polished Checklist Placeholder Panel */
             <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden h-full flex flex-col justify-between p-6 min-h-[400px]">
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="flex items-center gap-2 pb-4 border-b border-cyber-border">
                   <Shield className="text-slate-500" size={18} />
                   <h2 className="font-display font-semibold text-slate-400">
                     Acoustic Integrity Scan
                   </h2>
                 </div>
-                
-                <div className="p-4 bg-slate-950/20 border border-dashed border-slate-800 rounded-lg flex flex-col items-center justify-center text-center space-y-3 py-12">
-                  <div className="p-3 bg-slate-900 border border-slate-800 text-slate-600 rounded-full">
-                    <FileAudio size={28} />
+
+                <div className="space-y-4">
+                  {/* Status Indicator */}
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-950/40 border border-cyber-border/50 rounded-lg w-fit">
+                    <div className="h-2 w-2 rounded-full bg-cyber-rose"></div>
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest font-semibold">
+                      Awaiting Analysis
+                    </span>
                   </div>
-                  <div>
-                    <h3 className="font-mono text-xs font-bold text-slate-400 uppercase tracking-widest">
-                      Awaiting Payload
-                    </h3>
-                    <p className="text-[11px] text-slate-500 font-mono mt-1 max-w-xs">
-                      Provide an audio file on the left console to trigger acoustic features & deepfake analysis.
-                    </p>
+
+                  {/* Flow Steps Checklist */}
+                  <div className="space-y-3 font-mono text-xs">
+                    <div className="flex items-center gap-3 p-3 bg-slate-950/20 border border-slate-800/40 rounded-lg text-slate-400">
+                      <span className="h-5 w-5 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-500 font-bold shrink-0">1</span>
+                      <span className="font-medium text-slate-300">Upload an audio sample</span>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-slate-950/20 border border-slate-800/40 rounded-lg text-slate-500">
+                      <span className="h-5 w-5 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-600 font-bold shrink-0">2</span>
+                      <span className="font-medium text-slate-500">Run forensic analysis</span>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-slate-950/20 border border-slate-800/40 rounded-lg text-slate-500">
+                      <span className="h-5 w-5 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-600 font-bold shrink-0">3</span>
+                      <span className="font-medium text-slate-500">View prediction report</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-cyber-border/40 text-[9px] text-center text-slate-600 font-mono">
+              <div className="pt-6 border-t border-cyber-border/40 text-[9px] text-center text-slate-500 font-mono">
                 SECURED THREAT NODE CHANNEL
               </div>
             </div>

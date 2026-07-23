@@ -1,19 +1,38 @@
 import React from 'react';
-import { ShieldCheck, ShieldAlert, AudioLines } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, AudioLines, Clock } from 'lucide-react';
 import StatusBadge from './StatusBadge';
+import InfoRow from './InfoRow';
+
+// Lightweight local formatter helper
+const formatter = {
+  confidence: (val) => {
+    if (val === null || val === undefined || val === '') return '—';
+    const num = Number(val);
+    if (isNaN(num)) return '—';
+    const scaled = (num > 0 && num <= 1) ? num * 100 : num;
+    return `${scaled.toFixed(1)}%`;
+  },
+  duration: (val) => {
+    if (val === null || val === undefined || val === '') return '—';
+    const num = Number(val);
+    return isNaN(num) ? '—' : `${num.toFixed(2)} s`;
+  },
+  sampleRate: (val) => {
+    if (val === null || val === undefined || val === '') return '—';
+    const num = Number(val);
+    return isNaN(num) ? '—' : `${num} Hz`;
+  },
+  processingTime: (val) => {
+    if (val === null || val === undefined || val === '') return '—';
+    const num = Number(val);
+    return isNaN(num) ? '—' : `${num}s`;
+  }
+};
 
 /**
  * Reusable PredictionCard component.
  * Renders a cybersecurity-themed prediction results dashboard card.
  * Displays only authentic parameters returned from the backend API PredictionResponse.
- * 
- * @param {Object} props
- * @param {string} props.prediction - 'Real' or 'Fake'
- * @param {number} props.confidence - Confidence score from API (ranges 0 to 100 or 0 to 1)
- * @param {string} props.filename - Audio filename analyzed
- * @param {string} props.timestamp - Timestamp when the scan was executed
- * @param {string|number} props.processingTime - Elapsed pipeline duration
- * @param {Object} [props.analysis] - Analysis info (sample_rate, duration) from PredictionResponse
  */
 export default function PredictionCard({
   prediction,
@@ -24,19 +43,18 @@ export default function PredictionCard({
   analysis = null,
 }) {
   const isReal = prediction?.toLowerCase() === 'real';
+  const confidencePercent = formatter.confidence(confidence);
 
-  // Normalize confidence to display as percentage
+  // Normalize confidence for progress bar width percentage
   let confidenceVal = typeof confidence === 'number' ? confidence : 0;
   if (confidenceVal > 0 && confidenceVal <= 1) {
     confidenceVal = confidenceVal * 100;
   }
-  const confidencePercent = typeof confidence === 'number' ? confidenceVal.toFixed(1) : '—';
 
   // Audio properties from prediction response
-  const sampleRate = analysis?.sample_rate;
-  const duration = analysis?.duration;
-  const sampleRateText = typeof sampleRate === 'number' ? `${sampleRate} Hz` : '—';
-  const durationText = typeof duration === 'number' ? `${duration.toFixed(2)} s` : '—';
+  const sampleRateText = formatter.sampleRate(analysis?.sample_rate);
+  const durationText = formatter.duration(analysis?.duration);
+  const processingTimeText = formatter.processingTime(processingTime);
 
   return (
     <div className={`p-6 border rounded-xl transition-all duration-500 bg-cyber-dark animate-fadeIn ${
@@ -45,7 +63,7 @@ export default function PredictionCard({
         : 'border-cyber-rose/30 shadow-[0_0_20px_rgba(244,63,94,0.08)]'
     }`}>
       
-      {/* Header Info */}
+      {/* 1. SCAN SUMMARY SECTION */}
       <div className="flex justify-between items-start gap-4 mb-6">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
@@ -68,69 +86,137 @@ export default function PredictionCard({
         </div>
       </div>
 
-      {/* Main classification message */}
-      <div className={`p-4 border rounded-lg mb-6 font-mono text-xs leading-relaxed ${
-        isReal 
-          ? 'bg-cyber-green/5 border-cyber-green/20 text-slate-200' 
-          : 'bg-cyber-rose/5 border-cyber-rose/20 text-slate-200'
-      }`}>
-        <span className="font-bold uppercase tracking-wider block mb-1">
-          Verdict: {prediction ? (isReal ? 'AUTHENTIC' : 'SUSPICIOUS / DEEPFAKE') : 'UNKNOWN'}
-        </span>
-        This audio signal has been classified as <strong className={isReal ? 'text-cyber-green' : 'text-cyber-rose'}>{(prediction || 'Unknown').toUpperCase()}</strong> with a classification confidence score of <strong className="text-slate-100">{confidencePercent}%</strong>.
-      </div>
-
-      {/* Confidence progress bar */}
-      <div className="space-y-2 mb-6">
-        <div className="flex justify-between text-xs font-mono text-slate-400">
-          <span>Classifier Confidence</span>
-          <span className={isReal ? 'text-cyber-green font-bold' : 'text-cyber-rose font-bold'}>
-            {confidencePercent}%
+      {/* 2. PREDICTION RESULT SECTION */}
+      <div className="space-y-4 mb-6">
+        <div className={`p-4 border rounded-lg font-mono text-xs leading-relaxed ${
+          isReal 
+            ? 'bg-cyber-green/5 border-cyber-green/20 text-slate-200' 
+            : 'bg-cyber-rose/5 border-cyber-rose/20 text-slate-200'
+        }`}>
+          <span className="font-bold uppercase tracking-wider block mb-1">
+            Verdict: {prediction ? (isReal ? 'AUTHENTIC' : 'SUSPICIOUS / DEEPFAKE') : 'UNKNOWN'}
           </span>
+          This audio signal has been classified as <strong className={isReal ? 'text-cyber-green' : 'text-cyber-rose'}>{(prediction || 'Unknown').toUpperCase()}</strong> with a classification confidence score of <strong className="text-slate-100">{confidencePercent}</strong>.
         </div>
-        <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-900">
-          <div 
-            className={`h-full transition-all duration-1000 rounded-full ${
-              isReal ? 'bg-gradient-to-r from-cyber-cyan to-cyber-green' : 'bg-gradient-to-r from-cyber-rose to-amber-500'
-            }`} 
-            style={{ width: `${confidenceVal}%` }}
-          ></div>
+
+        {/* Confidence progress bar */}
+        <div className="space-y-2">
+          <InfoRow 
+            label="Classifier Confidence" 
+            value={confidencePercent} 
+            variant="row" 
+            labelClassName="text-xs text-slate-400 font-mono"
+            valueClassName={isReal ? 'text-cyber-green font-bold text-xs' : 'text-cyber-rose font-bold text-xs'}
+          />
+          <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-900">
+            <div 
+              className={`h-full transition-all duration-1000 rounded-full ${
+                isReal ? 'bg-gradient-to-r from-cyber-cyan to-cyber-green' : 'bg-gradient-to-r from-cyber-rose to-amber-500'
+              }`} 
+              style={{ width: `${confidenceVal}%` }}
+            ></div>
+          </div>
         </div>
       </div>
 
-      {/* Audio Signal Properties */}
+      {/* 3. AUDIO INFORMATION SECTION */}
       <div className="space-y-4 pt-4 border-t border-cyber-border/40">
         <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
           <AudioLines size={12} className="text-cyber-cyan" />
-          <span>Audio Signal Properties</span>
+          <span>Audio Information</span>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-          <div className="p-3 bg-slate-950/40 border border-cyber-border/50 rounded-lg">
-            <span className="text-[10px] text-slate-500 uppercase block mb-1">Duration</span>
-            <span className="text-slate-200 font-semibold">{durationText}</span>
-          </div>
-
-          <div className="p-3 bg-slate-950/40 border border-cyber-border/50 rounded-lg">
-            <span className="text-[10px] text-slate-500 uppercase block mb-1">Sample Rate</span>
-            <span className="text-slate-200 font-semibold">{sampleRateText}</span>
-          </div>
+        <div className="grid grid-cols-2 gap-4">
+          <InfoRow 
+            label="Duration" 
+            value={durationText} 
+            variant="card" 
+          />
+          <InfoRow 
+            label="Sample Rate" 
+            value={sampleRateText} 
+            variant="card" 
+          />
         </div>
       </div>
 
-      {/* Metadata info */}
-      <div className="mt-6 pt-4 border-t border-cyber-border text-[9px] font-mono text-slate-500 space-y-1">
-        <div className="flex items-center justify-between">
-          <span>SCAN DATE:</span>
-          <span className="text-slate-400">{timestamp || '—'}</span>
+      {/* 4. PROCESSING INFORMATION SECTION */}
+      <div className="mt-6 pt-4 border-t border-cyber-border/40 text-[9px] font-mono text-slate-500 space-y-2">
+        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 uppercase tracking-widest mb-1">
+          <Clock size={11} className="text-slate-500" />
+          <span>Processing Information</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span>PIPELINE COST TIME:</span>
-          <span className="text-slate-400">{processingTime ? `${processingTime}s` : '—'}</span>
+
+        <InfoRow 
+          label="SCAN DATE" 
+          value={timestamp || '—'} 
+          variant="row" 
+          labelClassName="text-[9px] text-slate-500"
+          valueClassName="text-slate-400 text-[9px]"
+        />
+
+        <InfoRow 
+          label="PIPELINE COST TIME" 
+          value={processingTimeText} 
+          variant="row" 
+          labelClassName="text-[9px] text-slate-500"
+          valueClassName="text-slate-400 text-[9px]"
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Lightweight PredictionCardSkeleton component for loading states.
+ * Pre-sizes exactly to the PredictionCard dimensions to prevent layout shifts.
+ */
+export function PredictionCardSkeleton() {
+  return (
+    <div className="p-6 border border-cyber-border/40 rounded-xl bg-cyber-dark animate-pulse flex flex-col">
+      {/* 1. Scan Summary Skeleton */}
+      <div className="flex justify-between items-start gap-4 mb-6">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-3 w-16 bg-slate-800 rounded"></div>
+            <div className="h-3.5 w-12 bg-slate-800 rounded"></div>
+          </div>
+          <div className="h-6 w-3/4 bg-slate-800 rounded"></div>
         </div>
-        <div className="flex items-center justify-between">
-          <span>DETECTION ENDPOINT:</span>
-          <span className="text-cyber-cyan uppercase font-bold">API/PREDICT</span>
+        <div className="h-12 w-12 bg-slate-800/50 border border-slate-800 rounded-lg shrink-0"></div>
+      </div>
+
+      {/* 2. Prediction Result Skeleton */}
+      <div className="space-y-4 mb-6">
+        <div className="h-16 w-full bg-slate-900/60 border border-slate-800/50 rounded-lg"></div>
+        <div className="space-y-2">
+          <div className="flex justify-between">
+            <div className="h-3 w-28 bg-slate-800 rounded"></div>
+            <div className="h-3 w-10 bg-slate-800 rounded"></div>
+          </div>
+          <div className="h-2 w-full bg-slate-950 rounded-full border border-slate-900"></div>
+        </div>
+      </div>
+
+      {/* 3. Audio Information Skeleton */}
+      <div className="space-y-4 pt-4 border-t border-cyber-border/40">
+        <div className="h-3.5 w-32 bg-slate-800 rounded"></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="h-14 bg-slate-950/40 border border-cyber-border/50 rounded-lg"></div>
+          <div className="h-14 bg-slate-950/40 border border-cyber-border/50 rounded-lg"></div>
+        </div>
+      </div>
+
+      {/* 4. Processing Information Skeleton */}
+      <div className="mt-6 pt-4 border-t border-cyber-border/40 text-slate-800 space-y-2.5">
+        <div className="h-3.5 w-32 bg-slate-800 rounded mb-1"></div>
+        <div className="flex justify-between">
+          <div className="h-3 w-20 bg-slate-800/60 rounded"></div>
+          <div className="h-3 w-24 bg-slate-800/60 rounded"></div>
+        </div>
+        <div className="flex justify-between">
+          <div className="h-3 w-24 bg-slate-800/60 rounded"></div>
+          <div className="h-3 w-12 bg-slate-800/60 rounded"></div>
         </div>
       </div>
     </div>
