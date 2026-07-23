@@ -429,3 +429,32 @@ Day 11 completed
 
 ## status:
 Day 12 completed
+
+
+### Day 13 (23 July) – Frontend UI Refinement & Component Architecture
+
+## Objective
+Refine the frontend architecture and improve the post-analysis user experience while keeping the application fully compatible with the existing FastAPI backend.
+
+## Tasks Completed
+- **Created Reusable InfoRow (`src/components/InfoRow.jsx`)**:
+  - Implemented a flexible component supporting two visual styles: `'row'` (inline flex layout for metadata lists) and `'card'` (styled box layout for audio grid metrics).
+- **Refactored PredictionCard (`src/components/PredictionCard.jsx`)**:
+  - Structured the card into 4 distinct sections: **Scan Summary**, **Prediction Result**, **Audio Information**, and **Processing Information**.
+  - Replaced hardcoded formatting blocks with the reusable `<InfoRow />` component.
+  - Implemented a lightweight internal formatting utility (`formatter`) that safely normalizes and formats confidence, duration, sample rate, and processing time, gracefully handling `null`, `undefined`, empty, and non-numeric values.
+  - Removed fabricated processing metadata (specifically `DETECTION ENDPOINT`) to keep the UI strictly aligned with authentic backend responses.
+- **Created PredictionCardSkeleton (`src/components/PredictionCard.jsx`)**:
+  - Designed a custom, lightweight skeleton component matching the layout and padding of `PredictionCard` with a pulse animation to prevent layout shifts.
+- **Enhanced Standby Empty State (`src/pages/Dashboard.jsx`)**:
+  - Redesigned the default standby card into a polished checklist placeholder panel showing "Awaiting Analysis" and the step-by-step pipeline workflow (Upload, Run, View) using existing theme colors.
+- **Integrated Skeleton Loading (`src/pages/Dashboard.jsx`)**:
+  - Rendered `PredictionCardSkeleton` in the right-column prediction panel during active pipeline runs (`isRunning === true`), maintaining the dashboard layout intact and avoiding layout shifts.
+
+## Files Modified/Created
+- **[InfoRow.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/InfoRow.jsx)** (New)
+- **[PredictionCard.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/PredictionCard.jsx)** (Modified)
+- **[Dashboard.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/Dashboard.jsx)** (Modified)
+
+## status:
+Day 13 completed
