@@ -21,6 +21,7 @@ def mock_prediction(
     acoustic_features: Dict,
     rir_features: Dict,
     breathing_features: Dict,
+    cadence_features: Dict,
     processing_time: float,
 ) -> Dict:
     """
@@ -34,6 +35,8 @@ def mock_prediction(
         Extracted RIR features.
     breathing_features : dict
         Extracted breathing analysis features.
+    cadence_features : dict
+        Extracted cadence alignment features.
     processing_time : float
         Actual backend processing time in seconds.
 
@@ -46,6 +49,8 @@ def mock_prediction(
             "confidence": float (0-100),
             "rir_score": int (0-100),
             "breathing_score": int (0-100),
+            "alignment_score": float (0-100),
+            "cadence": str,
             "processing_time": str (formatted time),
             "status": "completed"
         }
@@ -68,6 +73,13 @@ def mock_prediction(
         # Generate mock scores based on features (or random if features are minimal)
         rir_score = random.randint(50, 95)
         breathing_score = random.randint(30, 80)
+        
+        # Extract alignment score from cadence features
+        alignment_score = cadence_features.get("alignment_score", 0.0)
+        cadence = cadence_features.get("cadence", "Uncertain")
+        
+        # Convert alignment score to 0-100 scale for consistency
+        alignment_score_pct = round(alignment_score * 100, 2) if alignment_score else None
 
         # Format processing time
         processing_time_str = f"{processing_time:.2f}s"
@@ -77,13 +89,16 @@ def mock_prediction(
             "confidence": confidence,
             "rir_score": rir_score,
             "breathing_score": breathing_score,
+            "alignment_score": alignment_score_pct,
+            "cadence": cadence,
             "processing_time": processing_time_str,
             "status": "completed",
         }
 
         log_info(
             f"Mock prediction generated: {prediction} "
-            f"(confidence={confidence}%, rir={rir_score}, breathing={breathing_score})"
+            f"(confidence={confidence}%, rir={rir_score}, breathing={breathing_score}, "
+            f"alignment={alignment_score_pct}%, cadence={cadence})"
         )
 
         return result
@@ -116,6 +131,7 @@ def predict(
     acoustic_features: Dict,
     rir_features: Dict,
     breathing_features: Dict,
+    cadence_features: Dict,
     processing_time: float,
 ) -> Dict:
     """
@@ -129,6 +145,7 @@ def predict(
     acoustic_features : dict
     rir_features : dict
     breathing_features : dict
+    cadence_features : dict
     processing_time : float
 
     Returns
@@ -151,5 +168,6 @@ def predict(
         acoustic_features,
         rir_features,
         breathing_features,
+        cadence_features,
         processing_time,
     )

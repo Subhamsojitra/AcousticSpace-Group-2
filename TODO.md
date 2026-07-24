@@ -1,16 +1,25 @@
-# TODO - AcousticSpace integration fixes
+# Cadence Alignment Implementation TODO
 
-## Backend verified
-- [x] Confirm GET / returns running payload
+## Phase 1: Refactor scripts/cadence_alignment.py
+- [x] Add overload to `analyze_breathing_alignment` accepting `(audio: np.ndarray, sr: int)` directly
+- [x] Update internal functions to share code path
 
-## Frontend integration
-- [ ] Wire Dashboard drag-and-drop upload to backend `POST /api/upload/` using `multipart/form-data`
-- [ ] After upload, call `POST /api/analysis/` with `{ file_path }`
-- [ ] After analysis, call `POST /api/predict/` with `{ file_path }`
-- [ ] Replace hardcoded “Scanner Status” with real request to `GET /` (Online/Offline)
-- [ ] Update UI to show success/error states
+## Phase 2: Refactor backend/app/services/cadence_alignment.py
+- [x] Remove deprecated `librosa.output.write_wav` usage
+- [x] Call cadence functions directly with numpy array via `analyze_breathing_alignment_from_array`
+- [x] Add proper logging for cadence metrics (score, breaths, syllables)
 
-## Testing
-- [ ] Verify browser Network tab shows requests and no CORS errors
-- [ ] Verify backend receives file and returns expected JSON
+## Phase 3: Update backend/app/api/analysis.py
+- [x] Import and call `analyze_cadence_alignment`
+- [x] Include `breathing_alignment` in response
+- [x] Add timing and logging for cadence analysis
+
+## Phase 4: Update backend/app/api/predict.py
+- [x] Add cadence-specific metric logging (alignment_score, cadence label)
+- [x] Ensure proper error handling for cadence data in logging
+
+## Phase 5: Verify integration
+- [x] Check all imports are consistent
+- [x] Verify no deprecated functions are used
+- [x] Ensure PEP-8 compliance
 
