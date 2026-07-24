@@ -458,3 +458,34 @@ Refine the frontend architecture and improve the post-analysis user experience w
 
 ## status:
 Day 13 completed
+
+
+### Day 14 (24 July) – Week 3 Frontend Integration & State Management
+
+## Objective
+Improve frontend integration, maintainability, and workflow stability by refactoring state management, file lifecycle triggers, defensive rendering, and clean routing-independent pipeline stages while preserving the existing UX and API compatibility.
+
+## Tasks Completed
+- **State Management Refactoring (`src/pages/Dashboard.jsx`)**:
+  - Maintained independent React state variables instead of a single giant object, avoiding unnecessary spread syntax.
+  - Extracted repetitive cleanup, reset, and initialization logic into reusable, local helper functions:
+    - `clearPredictionState()`: resets prediction outcomes, confidence scores, and processing logs.
+    - `initializePipelineState(message)`: prepares states for a newly loaded file.
+    - `resetPipelineState()`: prepares state machine prior to a new run.
+  - Eliminated duplicated hooks and inline assignments by centralizing resets.
+- **Workflow & Lifecycle Synchronization**:
+  - Refactored file-change `useEffect` to clear previous errors via `setError(null)` and invoke `initializePipelineState()` atomically, preventing cross-file data leaks or persisting stale prediction views.
+  - Fixed `LoadingOverlay` lock screen bug on failure: passed the mapped `stage === 'failed' ? 'idle' : stage` to the overlay so it gets correctly dismissed on pipeline errors, making the dashboard interactive again and exposing the `ErrorAlert` with its "Retry Analysis" button.
+- **Defensive Rendering & Validation**:
+  - Implemented strong type guards for prediction strings and confidence metrics (casing safely and checking numeric ranges before rendering).
+  - Integrated console warnings during development for unexpected JSON payloads to assist debugging without crashing the user interface.
+  - Allowed optional/missing analysis fields (like `rir_features` or `breathing_analysis`) to fallback gracefully rather than raising errors and failing the pipeline.
+- **Code Cleanups**:
+  - Extracted long nested inline styling ternary rules in metrics card loop into a clear, static lookup configurations mapping (`THEME_CLASSES`).
+  - Simplified status and config resolving logic into clean functions: `getPipelineStatus(stage, hasFile)` and `getScannerConfig(status)`.
+
+## Files Modified/Created
+- **[Dashboard.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/Dashboard.jsx)** (Modified)
+
+## status:
+Day 14 completed

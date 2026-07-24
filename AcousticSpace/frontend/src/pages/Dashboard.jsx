@@ -13,6 +13,46 @@ import ErrorAlert from '../components/ErrorAlert';
 import PredictionCard, { PredictionCardSkeleton } from '../components/PredictionCard';
 import LoadingOverlay from '../components/LoadingOverlay';
 
+const THEME_CLASSES = {
+  amber: {
+    border: 'border-cyber-border hover:border-amber-500/30 hover:shadow-[0_0_15px_rgba(245,158,11,0.05)]',
+    dot: 'bg-amber-500',
+  },
+  cyan: {
+    border: 'border-cyber-border hover:border-cyber-cyan/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.05)]',
+    dot: 'bg-cyber-cyan',
+  },
+  green: {
+    border: 'border-cyber-border hover:border-cyber-green/30 hover:shadow-[0_0_15px_rgba(16,185,129,0.05)]',
+    dot: 'bg-cyber-green',
+  },
+  rose: {
+    border: 'border-cyber-border hover:border-cyber-rose/30 hover:shadow-[0_0_15px_rgba(244,63,94,0.05)]',
+    dot: 'bg-cyber-rose',
+  },
+  gray: {
+    border: 'border-cyber-border hover:border-slate-700/30',
+    dot: 'bg-slate-600',
+  },
+};
+
+const getPipelineStatus = (stage, hasFile) => {
+  if (stage === 'completed') return { value: 'ANALYZED', theme: 'green' };
+  if (stage === 'failed') return { value: 'FAILED', theme: 'rose' };
+  if (stage !== 'idle') return { value: stage.toUpperCase(), theme: 'cyan' };
+  if (hasFile) return { value: 'READY', theme: 'cyan' };
+  return { value: 'STANDBY', theme: 'gray' };
+};
+
+const getScannerConfig = (status) => {
+  const config = {
+    checking: { value: 'Checking...', change: 'Probing backend', theme: 'amber' },
+    online: { value: 'Online', change: 'API reachable', theme: 'cyan' },
+    offline: { value: 'Offline', change: 'Awaiting backend', theme: 'rose' },
+  };
+  return config[status] || config.offline;
+};
+
 export default function Dashboard({ apiStatus = 'checking' }) {
   const fileUpload = useFileUpload();
   const { file, error: uploadError, handleFileChange, removeFile, setError } = fileUpload;
@@ -36,32 +76,39 @@ export default function Dashboard({ apiStatus = 'checking' }) {
     apiStatusRef.current = apiStatus;
   }, [apiStatus]);
 
+  // Helper functions for state cleanup and initialization
+  const clearPredictionState = () => {
+    setPrediction(null);
+    setConfidence(null);
+    setAnalysisInfo(null);
+    setRirFeatures(null);
+    setBreathingAnalysis(null);
+    setProcessingTime(null);
+    setTimestamp(null);
+  };
+
+  const initializePipelineState = (message) => {
+    clearPredictionState();
+    setFileId(null);
+    setStage('idle');
+    setPipelineMessage(message);
+  };
+
+  const resetPipelineState = () => {
+    setError(null);
+    clearPredictionState();
+    setFileId(null);
+  };
+
   // Reset pipeline state when the selected file changes or is removed
   useEffect(() => {
+    setError(null); // Clear previous errors before new upload lifecycle starts
     if (!file) {
-      setPrediction(null);
-      setConfidence(null);
-      setAnalysisInfo(null);
-      setRirFeatures(null);
-      setBreathingAnalysis(null);
-      setFileId(null);
-      setProcessingTime(null);
-      setTimestamp(null);
-      setStage('idle');
-      setPipelineMessage('Awaiting Audio Upload');
+      initializePipelineState('Awaiting Audio Upload');
     } else {
-      setPrediction(null);
-      setConfidence(null);
-      setAnalysisInfo(null);
-      setRirFeatures(null);
-      setBreathingAnalysis(null);
-      setFileId(null);
-      setProcessingTime(null);
-      setTimestamp(null);
-      setStage('idle');
-      setPipelineMessage('Payload loaded. Ready to run forensic analysis.');
+      initializePipelineState('Payload loaded. Ready to run forensic analysis.');
     }
-  }, [file]);
+  }, [file, setError]);
 
   const runPipeline = async () => {
     if (!file) return;
@@ -71,16 +118,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
       return;
     }
 
-    // Reset previous execution results
-    setError(null);
-    setPrediction(null);
-    setConfidence(null);
-    setAnalysisInfo(null);
-    setRirFeatures(null);
-    setBreathingAnalysis(null);
-    setProcessingTime(null);
-    setTimestamp(null);
-    setFileId(null);
+    resetPipelineState();
 
     const startTime = performance.now();
 
@@ -92,10 +130,12 @@ export default function Dashboard({ apiStatus = 'checking' }) {
 
       // Perform payload schema validation for upload result
       if (!uploadResult || typeof uploadResult !== 'object') {
+        console.warn('Unexpected upload API response structure:', uploadResult);
         throw new Error('Upload failed: Server returned an invalid response.');
       }
       const fileIdVal = uploadResult.file_path || uploadResult.file_name || uploadResult.file_id;
       if (!fileIdVal) {
+        console.warn('Missing file identification metadata in upload API response:', uploadResult);
         throw new Error('Upload failed: Server response is missing file identification metadata.');
       }
       setFileId(fileIdVal);
@@ -107,17 +147,20 @@ export default function Dashboard({ apiStatus = 'checking' }) {
 
       // Perform payload schema validation for analysis results
       if (!analysisRes || typeof analysisRes !== 'object') {
+        console.warn('Unexpected analysis API response structure:', analysisRes);
         throw new Error('Analysis failed: Server returned an empty or invalid response.');
       }
+      
+      // Handle missing optional fields defensively: log warning, proceed without throwing
       if (!analysisRes.rir_features) {
-        throw new Error('Analysis failed: Server response is missing Room Impulse Response metrics.');
+        console.warn('Optional Room Impulse Response metrics are missing in analysis response:', analysisRes);
       }
       if (!analysisRes.breathing_analysis) {
-        throw new Error('Analysis failed: Server response is missing breathing analysis metrics.');
+        console.warn('Optional breathing analysis metrics are missing in analysis response:', analysisRes);
       }
 
-      setRirFeatures(analysisRes.rir_features);
-      setBreathingAnalysis(analysisRes.breathing_analysis);
+      setRirFeatures(analysisRes.rir_features || null);
+      setBreathingAnalysis(analysisRes.breathing_analysis || null);
 
       // 3. Predicting stage
       setStage('predicting');
@@ -126,9 +169,11 @@ export default function Dashboard({ apiStatus = 'checking' }) {
 
       // Perform payload schema validation for prediction results
       if (!predictRes || typeof predictRes !== 'object') {
+        console.warn('Unexpected prediction API response structure:', predictRes);
         throw new Error('Prediction failed: Server returned an empty or invalid response.');
       }
       if (!predictRes.prediction) {
+        console.warn('Missing prediction classification in prediction response:', predictRes);
         throw new Error('Prediction failed: Server response is missing prediction classification.');
       }
 
@@ -137,8 +182,8 @@ export default function Dashboard({ apiStatus = 'checking' }) {
 
       // Store returned objects in Dashboard state (only passing confirmed predict response data to child components)
       setPrediction(predictRes.prediction);
-      setConfidence(predictRes.confidence);
-      setAnalysisInfo(predictRes.analysis);
+      setConfidence(predictRes.confidence !== undefined && predictRes.confidence !== null ? predictRes.confidence : null);
+      setAnalysisInfo(predictRes.analysis || null);
       setProcessingTime(elapsedSecs);
       setTimestamp(new Date().toLocaleString());
 
@@ -154,40 +199,31 @@ export default function Dashboard({ apiStatus = 'checking' }) {
     }
   };
 
-  const scannerValue = apiStatus === 'checking' ? 'Checking...' : apiStatus === 'online' ? 'Online' : 'Offline';
-  const scannerChange = apiStatus === 'checking'
-    ? 'Probing backend'
-    : apiStatus === 'online'
-      ? 'API reachable'
-      : 'Awaiting backend';
-
-  const pipelineStateValue = stage === 'completed'
-    ? 'ANALYZED'
-    : stage === 'failed'
-      ? 'FAILED'
-      : stage !== 'idle'
-        ? stage.toUpperCase()
-        : file
-          ? 'READY'
-          : 'STANDBY';
-
-  const pipelineStateTheme = stage === 'completed'
-    ? 'green'
-    : stage === 'failed'
-      ? 'rose'
-      : stage !== 'idle'
-        ? 'cyan'
-        : file
-          ? 'cyan'
-          : 'gray';
-
-  // Determine dashboard inputs and interaction lock state
   const isRunning = stage === 'uploading' || stage === 'extracting' || stage === 'predicting';
+
+  // Defensive Metrics Evaluation
+  const hasConfidence = confidence !== null && confidence !== undefined && !isNaN(Number(confidence));
+  const formatConfidence = (val) => {
+    const num = Number(val);
+    const scaled = (num > 0 && num <= 1) ? num * 100 : num;
+    return `${scaled.toFixed(1)}%`;
+  };
+  const normalizedPrediction = typeof prediction === 'string' ? prediction.trim() : '';
+  const normPredictionLower = normalizedPrediction.toLowerCase();
+
+  const verificationValue = normalizedPrediction ? normalizedPrediction.toUpperCase() : '—';
+  const verificationChange = (normalizedPrediction && hasConfidence)
+    ? `Confidence: ${formatConfidence(confidence)}`
+    : 'Awaiting classification';
+  const verificationTheme = normPredictionLower === 'real' ? 'green' : normPredictionLower === 'fake' ? 'rose' : 'gray';
+
+  const pipelineStatus = getPipelineStatus(stage, !!file);
+  const scannerConfig = getScannerConfig(apiStatus);
 
   return (
     <div className="space-y-8 animate-fadeIn relative">
-      {/* Loading Overlay */}
-      <LoadingOverlay stage={stage} error={uploadError} />
+      {/* Loading Overlay - Passed stage is mapped so it is dismissed on failed status to reveal retry dashboard options */}
+      <LoadingOverlay stage={stage === 'failed' ? 'idle' : stage} error={uploadError} />
 
       {/* Page Header */}
       <div>
@@ -202,50 +238,39 @@ export default function Dashboard({ apiStatus = 'checking' }) {
       {/* Metric Cards Grid */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Pipeline State', value: pipelineStateValue, change: pipelineMessage, theme: pipelineStateTheme },
+          { label: 'Pipeline State', value: pipelineStatus.value, change: pipelineMessage, theme: pipelineStatus.theme },
           { 
             label: 'Verification', 
-            value: prediction ? prediction.toUpperCase() : '—', 
-            change: (prediction && typeof confidence === 'number') 
-              ? `Confidence: ${confidence.toFixed(1)}%` 
-              : 'Awaiting classification', 
-            theme: prediction === 'Real' ? 'green' : prediction === 'Fake' ? 'rose' : 'gray' 
+            value: verificationValue, 
+            change: verificationChange, 
+            theme: verificationTheme 
           },
           { label: 'Classification F1', value: '98.4%', change: 'AST-v2 model spec', theme: 'cyan' },
-          { label: 'Scanner Status', value: scannerValue, change: scannerChange, theme: apiStatus === 'online' ? 'cyan' : apiStatus === 'checking' ? 'amber' : 'rose' }
-        ].map((m, idx) => (
-          <div 
-            key={idx} 
-            className={`p-6 bg-cyber-dark rounded-xl border transition-all duration-300 min-h-[128px] flex flex-col justify-between ${
-              m.theme === 'amber' 
-                ? 'border-cyber-border hover:border-amber-500/30 hover:shadow-[0_0_15px_rgba(245,158,11,0.05)]' 
-                : m.theme === 'cyan' 
-                  ? 'border-cyber-border hover:border-cyber-cyan/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.05)]' 
-                  : m.theme === 'green' 
-                    ? 'border-cyber-border hover:border-cyber-green/30 hover:shadow-[0_0_15px_rgba(16,185,129,0.05)]' 
-                    : m.theme === 'rose' 
-                      ? 'border-cyber-border hover:border-cyber-rose/30 hover:shadow-[0_0_15px_rgba(244,63,94,0.05)]' 
-                      : 'border-cyber-border hover:border-slate-700/30'
-            }`}
-          >
-            <div>
-              <span className="text-xs font-mono text-slate-500 uppercase tracking-widest block">
-                {m.label}
-              </span>
-              <span className="text-2xl font-display font-bold text-slate-100 mt-1 block">
-                {m.value}
-              </span>
+          { label: 'Scanner Status', value: scannerConfig.value, change: scannerConfig.change, theme: scannerConfig.theme }
+        ].map((m, idx) => {
+          const themeConfig = THEME_CLASSES[m.theme] || THEME_CLASSES.gray;
+          return (
+            <div 
+              key={idx} 
+              className={`p-6 bg-cyber-dark rounded-xl border transition-all duration-300 min-h-[128px] flex flex-col justify-between ${themeConfig.border}`}
+            >
+              <div>
+                <span className="text-xs font-mono text-slate-500 uppercase tracking-widest block">
+                  {m.label}
+                </span>
+                <span className="text-2xl font-display font-bold text-slate-100 mt-1 block">
+                  {m.value}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-2">
+                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${themeConfig.dot}`}></div>
+                <span className="text-[11px] font-mono text-slate-400 truncate" title={m.change}>
+                  {m.change}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 mt-2">
-              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                m.theme === 'amber' ? 'bg-amber-500' : m.theme === 'cyan' ? 'bg-cyber-cyan' : m.theme === 'green' ? 'bg-cyber-green' : m.theme === 'rose' ? 'bg-cyber-rose' : 'bg-slate-600'
-              }`}></div>
-              <span className="text-[11px] font-mono text-slate-400 truncate" title={m.change}>
-                {m.change}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       {/* Main Grid: Upload & Waveform (Left), Report Status (Right) */}
