@@ -489,3 +489,92 @@ Improve frontend integration, maintainability, and workflow stability by refacto
 
 ## status:
 Day 14 completed
+
+# Frontend Development Log – Day 25 (25 July)
+
+## Task: Frontend Robustness & Stability Refinements
+
+### Objective
+Focused on improving frontend reliability, defensive rendering, API response validation, and dashboard state consistency without modifying backend APIs, request/response schemas, or the existing UI design.
+
+---
+
+## Completed Work
+
+### 1. Centralized API Validation & Formatting
+**Files Modified**
+- `src/services/apiHelpers.js`
+- `src/services/api.js`
+
+**Changes**
+- Added centralized validator functions for:
+  - Upload response
+  - Analysis response
+  - Prediction response
+  - History response
+- Centralized reusable formatter utilities:
+  - `formatConfidence()`
+  - `formatDuration()`
+  - `formatSampleRate()`
+  - `formatProcessingTime()`
+  - `normalizePrediction()`
+- Updated API service methods to consume shared validation helpers, reducing duplicated logic and improving consistency across the application.
+
+---
+
+### 2. Defensive UI Rendering
+**Files Modified**
+- `src/components/PredictionCard.jsx`
+- `src/components/StatusBadge.jsx`
+- `src/components/InfoRow.jsx`
+
+**Changes**
+- Replaced local formatting logic with centralized helper utilities.
+- Added safe handling for null, undefined, empty, and malformed values.
+- Introduced graceful fallback placeholders (`—`) where metadata may be unavailable.
+- Hardened status rendering to prevent runtime exceptions caused by unexpected prediction values.
+
+---
+
+### 3. Waveform Rendering Improvements
+**File Modified**
+- `src/components/WaveformViewer.jsx`
+
+**Changes**
+- Added validation before accessing audio channels.
+- Prevented invalid waveform calculations by ensuring safe step sizes.
+- Added safeguards against empty waveform arrays and invalid amplitude calculations.
+- Improved resilience when decoding unsupported or malformed audio files.
+
+---
+
+### 4. Dashboard Pipeline Stability
+**File Modified**
+- `src/pages/Dashboard.jsx`
+
+**Changes**
+- Improved dashboard state cleanup when:
+  - selecting a new file
+  - removing an uploaded file
+- Prevented duplicate pipeline execution using an execution lock.
+- Improved synchronization between loading states and action buttons.
+- Ensured pipeline state remains consistent throughout the analysis lifecycle.
+
+---
+
+### 5. Upload Component Improvements
+**File Modified**
+- `src/components/AudioUpload.jsx`
+
+**Changes**
+- Cleared the native file input after file removal.
+- Fixed the issue where selecting the same file twice would not trigger the upload event.
+- Improved disabled-state behaviour and cursor feedback during active operations.
+
+---
+
+## Outcome
+
+The frontend is now significantly more robust against invalid API responses, incomplete metadata, duplicate requests, repeated uploads, and malformed audio files while maintaining complete compatibility with the existing FastAPI backend and preserving the current user interface.
+
+## day completed
