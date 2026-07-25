@@ -116,3 +116,105 @@ export function getErrorMessage(error, apiStatus = 'online') {
 
   return rawMessage || 'An unexpected error occurred during audio classification.';
 }
+
+/**
+ * Validates the upload API response.
+ */
+export function validateUploadResponse(data) {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Upload failed: Server returned an invalid response.');
+  }
+  const fileIdVal = data.file_path || data.file_name || data.file_id;
+  if (!fileIdVal) {
+    throw new Error('Upload failed: Server response is missing file identification metadata.');
+  }
+  return data;
+}
+
+/**
+ * Validates the analysis API response.
+ */
+export function validateAnalysisResponse(data) {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Analysis failed: Server returned an empty or invalid response.');
+  }
+  return data;
+}
+
+/**
+ * Validates the prediction API response.
+ */
+export function validatePredictionResponse(data) {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Prediction failed: Server returned an empty or invalid response.');
+  }
+  if (!data.prediction) {
+    throw new Error('Prediction failed: Server response is missing prediction classification.');
+  }
+  return data;
+}
+
+/**
+ * Validates the history API response.
+ */
+export function validateHistoryResponse(data) {
+  if (!data || typeof data !== 'object') {
+    throw new Error('History retrieval failed: Server returned an invalid response.');
+  }
+  if (!Array.isArray(data.history)) {
+    throw new Error('History retrieval failed: Server response is missing history list.');
+  }
+  return data;
+}
+
+/**
+ * Formats a confidence score into a percentage string.
+ */
+export function formatConfidence(val) {
+  if (val === null || val === undefined || val === '') return '—';
+  const num = Number(val);
+  if (isNaN(num)) return '—';
+  const scaled = (num > 0 && num <= 1) ? num * 100 : num;
+  return `${scaled.toFixed(1)}%`;
+}
+
+/**
+ * Formats duration value.
+ */
+export function formatDuration(val) {
+  if (val === null || val === undefined || val === '') return '—';
+  const num = Number(val);
+  return isNaN(num) ? '—' : `${num.toFixed(2)} s`;
+}
+
+/**
+ * Formats sample rate value.
+ */
+export function formatSampleRate(val) {
+  if (val === null || val === undefined || val === '') return '—';
+  const num = Number(val);
+  return isNaN(num) ? '—' : `${num} Hz`;
+}
+
+/**
+ * Formats processing time value.
+ */
+export function formatProcessingTime(val) {
+  if (val === null || val === undefined || val === '') return '—';
+  const num = Number(val);
+  return isNaN(num) ? '—' : `${num}s`;
+}
+
+/**
+ * Normalizes prediction status string to lowercase ('real' | 'fake' | '').
+ */
+export function normalizePrediction(prediction) {
+  if (typeof prediction === 'string') {
+    const trimmed = prediction.trim().toLowerCase();
+    if (trimmed === 'real' || trimmed === 'fake') {
+      return trimmed;
+    }
+  }
+  return '';
+}
+

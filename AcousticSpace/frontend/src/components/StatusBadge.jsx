@@ -9,11 +9,12 @@ import React from 'react';
  * @param {string} [props.customLabel] - Optional custom display label
  */
 export default function StatusBadge({ status, customLabel }) {
-  let text = customLabel || status || '';
+  const statusStr = status !== null && status !== undefined ? String(status).trim() : '';
+  let text = customLabel || statusStr || '';
   let themeClass = '';
   let dotClass = '';
 
-  const normalizedStatus = status?.toLowerCase();
+  const normalizedStatus = statusStr.toLowerCase();
 
   switch (normalizedStatus) {
     case 'online':
@@ -24,7 +25,7 @@ export default function StatusBadge({ status, customLabel }) {
       themeClass = 'bg-cyber-green/10 text-cyber-green border-cyber-green/30';
       dotClass = 'bg-cyber-green animate-pulse';
       if (!customLabel) {
-        text = normalizedStatus === 'real' ? 'REAL AUDIO' : status.toUpperCase();
+        text = normalizedStatus === 'real' ? 'REAL AUDIO' : statusStr.toUpperCase();
       }
       break;
     case 'offline':
@@ -35,7 +36,7 @@ export default function StatusBadge({ status, customLabel }) {
       themeClass = 'bg-cyber-rose/10 text-cyber-rose border-cyber-rose/30';
       dotClass = 'bg-cyber-rose animate-pulse';
       if (!customLabel) {
-        text = normalizedStatus === 'fake' ? 'DEEPFAKE' : status.toUpperCase();
+        text = normalizedStatus === 'fake' ? 'DEEPFAKE' : statusStr.toUpperCase();
       }
       break;
     case 'probing':
@@ -46,14 +47,14 @@ export default function StatusBadge({ status, customLabel }) {
       themeClass = 'bg-cyber-cyan/10 text-cyber-cyan border-cyber-cyan/30';
       dotClass = 'bg-cyber-cyan animate-pulse';
       if (!customLabel) {
-        text = status.toUpperCase();
+        text = statusStr.toUpperCase();
       }
       break;
     default:
       themeClass = 'bg-slate-900 text-slate-400 border-slate-800';
       dotClass = 'bg-slate-600';
       if (!customLabel) {
-        text = status?.toUpperCase() || 'STANDBY';
+        text = statusStr ? statusStr.toUpperCase() : 'STANDBY';
       }
   }
 

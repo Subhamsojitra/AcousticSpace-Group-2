@@ -8,7 +8,11 @@ import AudioUpload from '../components/AudioUpload';
 import WaveformViewer from '../components/WaveformViewer';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadAudio, analyzeAudio, predictAudio } from '../services/api';
-import { getErrorMessage } from '../services/apiHelpers';
+import { 
+  getErrorMessage,
+  formatConfidence,
+  normalizePrediction
+} from '../services/apiHelpers';
 import ErrorAlert from '../components/ErrorAlert';
 import PredictionCard, { PredictionCardSkeleton } from '../components/PredictionCard';
 import LoadingOverlay from '../components/LoadingOverlay';
@@ -71,6 +75,9 @@ export default function Dashboard({ apiStatus = 'checking' }) {
   const [processingTime, setProcessingTime] = useState(null);
   const [timestamp, setTimestamp] = useState(null);
 
+  const isExecutingRef = useRef(false);
+  const abortControllerRef = useRef(null);
+
   const apiStatusRef = useRef(apiStatus);
   useEffect(() => {
     apiStatusRef.current = apiStatus;
@@ -102,6 +109,12 @@ export default function Dashboard({ apiStatus = 'checking' }) {
 
   // Reset pipeline state when the selected file changes or is removed
   useEffect(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    isExecutingRef.current = false;
+
     setError(null); // Clear previous errors before new upload lifecycle starts
     if (!file) {
       initializePipelineState('Awaiting Audio Upload');
@@ -110,13 +123,31 @@ export default function Dashboard({ apiStatus = 'checking' }) {
     }
   }, [file, setError]);
 
+  // Handle component unmount cleanup
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   const runPipeline = async () => {
     if (!file) return;
 
     // Prevent duplicate requests
-    if (stage === 'uploading' || stage === 'extracting' || stage === 'predicting') {
+    if (isExecutingRef.current) {
       return;
     }
+    isExecutingRef.current = true;
+
+    // Abort in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const signal = controller.signal;
 
     resetPipelineState();
 
@@ -126,38 +157,14 @@ export default function Dashboard({ apiStatus = 'checking' }) {
       // 1. Upload stage
       setStage('uploading');
       setPipelineMessage('Uploading audio payload to security gateway...');
-      const uploadResult = await uploadAudio(file);
-
-      // Perform payload schema validation for upload result
-      if (!uploadResult || typeof uploadResult !== 'object') {
-        console.warn('Unexpected upload API response structure:', uploadResult);
-        throw new Error('Upload failed: Server returned an invalid response.');
-      }
+      const uploadResult = await uploadAudio(file, signal);
       const fileIdVal = uploadResult.file_path || uploadResult.file_name || uploadResult.file_id;
-      if (!fileIdVal) {
-        console.warn('Missing file identification metadata in upload API response:', uploadResult);
-        throw new Error('Upload failed: Server response is missing file identification metadata.');
-      }
       setFileId(fileIdVal);
 
       // 2. Extraction stage
       setStage('extracting');
       setPipelineMessage('Decoding spatial indicators...');
-      const analysisRes = await analyzeAudio(fileIdVal);
-
-      // Perform payload schema validation for analysis results
-      if (!analysisRes || typeof analysisRes !== 'object') {
-        console.warn('Unexpected analysis API response structure:', analysisRes);
-        throw new Error('Analysis failed: Server returned an empty or invalid response.');
-      }
-      
-      // Handle missing optional fields defensively: log warning, proceed without throwing
-      if (!analysisRes.rir_features) {
-        console.warn('Optional Room Impulse Response metrics are missing in analysis response:', analysisRes);
-      }
-      if (!analysisRes.breathing_analysis) {
-        console.warn('Optional breathing analysis metrics are missing in analysis response:', analysisRes);
-      }
+      const analysisRes = await analyzeAudio(fileIdVal, signal);
 
       setRirFeatures(analysisRes.rir_features || null);
       setBreathingAnalysis(analysisRes.breathing_analysis || null);
@@ -165,22 +172,12 @@ export default function Dashboard({ apiStatus = 'checking' }) {
       // 3. Predicting stage
       setStage('predicting');
       setPipelineMessage('Running deepfake classification weights...');
-      const predictRes = await predictAudio(fileIdVal);
-
-      // Perform payload schema validation for prediction results
-      if (!predictRes || typeof predictRes !== 'object') {
-        console.warn('Unexpected prediction API response structure:', predictRes);
-        throw new Error('Prediction failed: Server returned an empty or invalid response.');
-      }
-      if (!predictRes.prediction) {
-        console.warn('Missing prediction classification in prediction response:', predictRes);
-        throw new Error('Prediction failed: Server response is missing prediction classification.');
-      }
+      const predictRes = await predictAudio(fileIdVal, signal);
 
       const endTime = performance.now();
       const elapsedSecs = ((endTime - startTime) / 1000).toFixed(2);
 
-      // Store returned objects in Dashboard state (only passing confirmed predict response data to child components)
+      // Store returned objects in Dashboard state
       setPrediction(predictRes.prediction);
       setConfidence(predictRes.confidence !== undefined && predictRes.confidence !== null ? predictRes.confidence : null);
       setAnalysisInfo(predictRes.analysis || null);
@@ -190,12 +187,21 @@ export default function Dashboard({ apiStatus = 'checking' }) {
       setStage('completed');
       setPipelineMessage(`Analysis completed in ${elapsedSecs}s.`);
     } catch (err) {
+      if (err.name === 'AbortError' || err.message?.includes('aborted') || signal.aborted) {
+        console.log('Pipeline run aborted.');
+        return;
+      }
       console.error('Scan pipeline failure:', err);
       setStage('failed');
       setPipelineMessage('Scan pipeline failed.');
       
       const readableMessage = getErrorMessage(err, apiStatusRef.current);
       setError(readableMessage);
+    } finally {
+      if (abortControllerRef.current === controller) {
+        isExecutingRef.current = false;
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -203,19 +209,13 @@ export default function Dashboard({ apiStatus = 'checking' }) {
 
   // Defensive Metrics Evaluation
   const hasConfidence = confidence !== null && confidence !== undefined && !isNaN(Number(confidence));
-  const formatConfidence = (val) => {
-    const num = Number(val);
-    const scaled = (num > 0 && num <= 1) ? num * 100 : num;
-    return `${scaled.toFixed(1)}%`;
-  };
-  const normalizedPrediction = typeof prediction === 'string' ? prediction.trim() : '';
-  const normPredictionLower = normalizedPrediction.toLowerCase();
+  const normPrediction = normalizePrediction(prediction);
 
-  const verificationValue = normalizedPrediction ? normalizedPrediction.toUpperCase() : '—';
-  const verificationChange = (normalizedPrediction && hasConfidence)
+  const verificationValue = normPrediction ? normPrediction.toUpperCase() : '—';
+  const verificationChange = (normPrediction && hasConfidence)
     ? `Confidence: ${formatConfidence(confidence)}`
     : 'Awaiting classification';
-  const verificationTheme = normPredictionLower === 'real' ? 'green' : normPredictionLower === 'fake' ? 'rose' : 'gray';
+  const verificationTheme = normPrediction === 'real' ? 'green' : normPrediction === 'fake' ? 'rose' : 'gray';
 
   const pipelineStatus = getPipelineStatus(stage, !!file);
   const scannerConfig = getScannerConfig(apiStatus);
@@ -347,7 +347,9 @@ export default function Dashboard({ apiStatus = 'checking' }) {
                   type="button"
                   onClick={runPipeline}
                   disabled={isRunning}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-cyber-cyan hover:bg-cyber-cyan/90 text-cyber-black font-display font-bold rounded-lg cursor-pointer transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider text-sm"
+                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 bg-cyber-cyan hover:bg-cyber-cyan/90 text-cyber-black font-display font-bold rounded-lg transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider text-sm ${
+                    isRunning ? 'cursor-not-allowed' : 'cursor-pointer'
+                  }`}
                 >
                   <Play size={16} fill="currentColor" />
                   <span>Analyze Audio</span>
