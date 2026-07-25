@@ -51,6 +51,13 @@ export default function AudioUpload({
     }
   };
 
+  const handleRemoveClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    removeFile();
+  };
+
   // Extract extension safely for preview card
   const getFileExtension = (filename) => {
     if (!filename) return '';
@@ -95,10 +102,12 @@ export default function AudioUpload({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={handleBrowseClick}
-            className={`border border-dashed rounded-xl py-8 px-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
-              isDragging
-                ? 'border-cyber-cyan bg-cyber-cyan-glow/20 scale-[1.01] glow-shadow-cyan'
-                : 'border-slate-700/60 bg-slate-950/30 hover:border-cyber-cyan/40 hover:bg-slate-950/50'
+            className={`border border-dashed rounded-xl py-8 px-6 flex flex-col items-center justify-center text-center transition-all duration-300 ${
+              uploading 
+                ? 'cursor-not-allowed border-slate-800 bg-slate-950/10 opacity-60'
+                : isDragging
+                  ? 'border-cyber-cyan bg-cyber-cyan-glow/20 scale-[1.01] glow-shadow-cyan cursor-pointer'
+                  : 'border-slate-700/60 bg-slate-950/30 hover:border-cyber-cyan/40 hover:bg-slate-950/50 cursor-pointer'
             }`}
           >
             <div className={`p-4 rounded-full border mb-4 transition-all duration-300 ${
@@ -172,9 +181,11 @@ export default function AudioUpload({
               {/* Remove/Cancel File Button */}
               <button
                 type="button"
-                onClick={removeFile}
+                onClick={handleRemoveClick}
                 disabled={uploading}
-                className="p-2 px-3 rounded-lg border border-cyber-rose/30 bg-cyber-rose-glow/20 text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-cyber-rose-glow/20 disabled:hover:text-cyber-rose transition-all duration-200 cursor-pointer flex items-center gap-1.5 font-mono text-xs font-bold shrink-0"
+                className={`p-2 px-3 rounded-lg border border-cyber-rose/30 bg-cyber-rose-glow/20 text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 disabled:opacity-50 disabled:hover:bg-cyber-rose-glow/20 disabled:hover:text-cyber-rose transition-all duration-200 flex items-center gap-1.5 font-mono text-xs font-bold shrink-0 ${
+                  uploading ? 'cursor-not-allowed' : 'cursor-pointer'
+                }`}
                 title="Remove File"
               >
                 <Trash2 size={14} />

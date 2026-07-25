@@ -2,32 +2,12 @@ import React from 'react';
 import { ShieldCheck, ShieldAlert, AudioLines, Clock } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import InfoRow from './InfoRow';
-
-// Lightweight local formatter helper
-const formatter = {
-  confidence: (val) => {
-    if (val === null || val === undefined || val === '') return '—';
-    const num = Number(val);
-    if (isNaN(num)) return '—';
-    const scaled = (num > 0 && num <= 1) ? num * 100 : num;
-    return `${scaled.toFixed(1)}%`;
-  },
-  duration: (val) => {
-    if (val === null || val === undefined || val === '') return '—';
-    const num = Number(val);
-    return isNaN(num) ? '—' : `${num.toFixed(2)} s`;
-  },
-  sampleRate: (val) => {
-    if (val === null || val === undefined || val === '') return '—';
-    const num = Number(val);
-    return isNaN(num) ? '—' : `${num} Hz`;
-  },
-  processingTime: (val) => {
-    if (val === null || val === undefined || val === '') return '—';
-    const num = Number(val);
-    return isNaN(num) ? '—' : `${num}s`;
-  }
-};
+import {
+  formatConfidence,
+  formatDuration,
+  formatSampleRate,
+  formatProcessingTime
+} from '../services/apiHelpers';
 
 /**
  * Reusable PredictionCard component.
@@ -42,19 +22,20 @@ export default function PredictionCard({
   processingTime,
   analysis = null,
 }) {
-  const isReal = prediction?.toLowerCase() === 'real';
-  const confidencePercent = formatter.confidence(confidence);
+  const isReal = typeof prediction === 'string' && prediction.trim().toLowerCase() === 'real';
+  const confidencePercent = formatConfidence(confidence);
 
   // Normalize confidence for progress bar width percentage
-  let confidenceVal = typeof confidence === 'number' ? confidence : 0;
-  if (confidenceVal > 0 && confidenceVal <= 1) {
-    confidenceVal = confidenceVal * 100;
+  let confidenceVal = 0;
+  if (confidence !== null && confidence !== undefined && !isNaN(Number(confidence))) {
+    const num = Number(confidence);
+    confidenceVal = (num > 0 && num <= 1) ? num * 100 : num;
   }
 
   // Audio properties from prediction response
-  const sampleRateText = formatter.sampleRate(analysis?.sample_rate);
-  const durationText = formatter.duration(analysis?.duration);
-  const processingTimeText = formatter.processingTime(processingTime);
+  const sampleRateText = formatSampleRate(analysis?.sample_rate);
+  const durationText = formatDuration(analysis?.duration);
+  const processingTimeText = formatProcessingTime(processingTime);
 
   return (
     <div className={`p-6 border rounded-xl transition-all duration-500 bg-cyber-dark animate-fadeIn ${

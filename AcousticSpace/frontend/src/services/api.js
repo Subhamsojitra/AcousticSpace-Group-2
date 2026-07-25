@@ -1,4 +1,11 @@
-import { makeRequest, ApiError } from './apiHelpers';
+import { 
+  makeRequest, 
+  ApiError,
+  validateUploadResponse,
+  validateAnalysisResponse,
+  validatePredictionResponse,
+  validateHistoryResponse
+} from './apiHelpers';
 
 export { ApiError };
 
@@ -16,12 +23,13 @@ export async function uploadAudio(file, signal) {
   const formData = new FormData();
   formData.append('file', file);
 
-  return makeRequest('/api/upload/', {
+  const res = await makeRequest('/api/upload/', {
     method: 'POST',
     body: formData,
     signal,
     // Note: Do not set Content-Type header; the browser will set it with the multipart boundary.
   });
+  return validateUploadResponse(res);
 }
 
 /**
@@ -35,7 +43,7 @@ export async function analyzeAudio(filePath, signal) {
     throw new Error('No file_path provided for analysis.');
   }
 
-  return makeRequest('/api/analysis/', {
+  const res = await makeRequest('/api/analysis/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -43,6 +51,7 @@ export async function analyzeAudio(filePath, signal) {
     body: JSON.stringify({ file_path: filePath }),
     signal,
   });
+  return validateAnalysisResponse(res);
 }
 
 /**
@@ -56,7 +65,7 @@ export async function predictAudio(filePath, signal) {
     throw new Error('No file_path provided for prediction.');
   }
 
-  return makeRequest('/api/predict/', {
+  const res = await makeRequest('/api/predict/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -64,14 +73,19 @@ export async function predictAudio(filePath, signal) {
     body: JSON.stringify({ file_path: filePath }),
     signal,
   });
+  return validatePredictionResponse(res);
 }
 
 /**
  * Retrieves the history of analyses.
+ * @param {AbortSignal} [signal] - Optional abort signal to cancel the history fetch.
  * @returns {Promise<Object>} Object containing the array of previous analyses.
  */
-export async function getHistory() {
-  return makeRequest('/api/history/', {
+export async function getHistory(signal) {
+  const res = await makeRequest('/api/history/', {
     method: 'GET',
+    signal,
   });
+  return validateHistoryResponse(res);
 }
+

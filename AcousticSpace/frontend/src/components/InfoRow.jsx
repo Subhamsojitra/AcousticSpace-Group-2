@@ -20,6 +20,8 @@ export default function InfoRow({
   valueClassName = '',
   className = '',
 }) {
+  const displayValue = (value !== null && value !== undefined && value !== '') ? value : '—';
+
   if (variant === 'card') {
     return (
       <div className={`p-3 bg-slate-950/40 border border-cyber-border/50 rounded-lg font-mono ${className}`}>
@@ -27,7 +29,7 @@ export default function InfoRow({
           {label}
         </span>
         <span className={`text-slate-200 font-semibold text-xs ${valueClassName}`}>
-          {value}
+          {displayValue}
         </span>
       </div>
     );
@@ -36,7 +38,7 @@ export default function InfoRow({
   return (
     <div className={`flex items-center justify-between font-mono text-xs ${className}`}>
       <span className={`text-slate-500 ${labelClassName}`}>{label}</span>
-      <span className={`text-slate-400 font-medium ${valueClassName}`}>{value}</span>
+      <span className={`text-slate-400 font-medium ${valueClassName}`}>{displayValue}</span>
     </div>
   );
 }

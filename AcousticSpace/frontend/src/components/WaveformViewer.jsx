@@ -76,22 +76,28 @@ export default function WaveformViewer({
             return;
           }
 
+          if (audioBuffer.numberOfChannels === 0) {
+            throw new Error('Audio file has no channels.');
+          }
           const channelData = audioBuffer.getChannelData(0);
           const numBars = 80;
-          const step = Math.floor(channelData.length / numBars);
+          const step = Math.max(1, Math.floor(channelData.length / numBars));
           const points = [];
           
           for (let i = 0; i < numBars; i++) {
             let max = 0;
             const start = i * step;
-            for (let j = 0; j < step; j++) {
-              const val = Math.abs(channelData[start + j]);
-              if (val > max) max = val;
+            if (start < channelData.length) {
+              const limit = Math.min(step, channelData.length - start);
+              for (let j = 0; j < limit; j++) {
+                const val = Math.abs(channelData[start + j]);
+                if (val > max) max = val;
+              }
             }
             points.push(max);
           }
 
-          const maxVal = Math.max(...points) || 1;
+          const maxVal = (points.length > 0 ? Math.max(...points) : 0) || 1;
           const normalized = points.map(val => Math.max(0.08, val / maxVal));
 
           if (active) {
@@ -101,7 +107,11 @@ export default function WaveformViewer({
           audioCtx.close();
         } catch (decodeError) {
           console.warn('Audio decoding failed, using fallback visual representation', decodeError);
-          audioCtx.close();
+          try {
+            audioCtx.close();
+          } catch (e) {
+            // Ignore error closing context if already closed
+          }
           if (active) {
             const fallback = generateFallbackWaveform(file.name);
             setAmplitudes(fallback);
