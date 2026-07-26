@@ -123,7 +123,7 @@ export default function AudioUpload({
             </h3>
             
             <p className="text-xs text-slate-400 mt-1 max-w-xs font-mono">
-              or <span className="text-cyber-cyan underline hover:text-cyber-cyan/80">browse your local filesystem</span>
+              or <span className={`text-cyber-cyan underline ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:text-cyber-cyan/80 cursor-pointer'}`}>browse your local filesystem</span>
             </p>
 
             <div className="mt-4 flex items-center gap-2 text-[10px] text-slate-500 font-mono border border-cyber-border bg-slate-950/80 px-2.5 py-1.5 rounded">
@@ -183,8 +183,10 @@ export default function AudioUpload({
                 type="button"
                 onClick={handleRemoveClick}
                 disabled={uploading}
-                className={`p-2 px-3 rounded-lg border border-cyber-rose/30 bg-cyber-rose-glow/20 text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 disabled:opacity-50 disabled:hover:bg-cyber-rose-glow/20 disabled:hover:text-cyber-rose transition-all duration-200 flex items-center gap-1.5 font-mono text-xs font-bold shrink-0 ${
-                  uploading ? 'cursor-not-allowed' : 'cursor-pointer'
+                className={`p-2 px-3 rounded-lg border flex items-center gap-1.5 font-mono text-xs font-bold shrink-0 transition-all duration-200 ${
+                  uploading
+                    ? 'border-cyber-rose/15 bg-cyber-rose-glow/10 text-cyber-rose/40 cursor-not-allowed opacity-50 shadow-none'
+                    : 'border-cyber-rose/30 bg-cyber-rose-glow/20 text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 cursor-pointer shadow-none'
                 }`}
                 title="Remove File"
               >

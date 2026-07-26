@@ -490,7 +490,7 @@ Improve frontend integration, maintainability, and workflow stability by refacto
 ## status:
 Day 14 completed
 
-# Frontend Development Log – Day 25 (25 July)
+# Frontend Development Log – Day 15 (25 July)
 
 ## Task: Frontend Robustness & Stability Refinements
 
@@ -577,4 +577,67 @@ Focused on improving frontend reliability, defensive rendering, API response val
 
 The frontend is now significantly more robust against invalid API responses, incomplete metadata, duplicate requests, repeated uploads, and malformed audio files while maintaining complete compatibility with the existing FastAPI backend and preserving the current user interface.
 
-## day completed
+## day 15  completed
+
+# Frontend Development Log – Day 16 (26 July)
+
+## Task: Frontend Consistency & UX Refinements
+
+### Objective
+Improve frontend maintainability, remove duplicated UI logic, standardize disabled-state hover/pointer behavior, synchronize pipeline state handling, and clean up unused code while keeping visual aesthetics and backend integrations completely unchanged.
+
+---
+
+## Completed Work
+
+### 1. Dashboard Structure & Pipeline Alignment
+**File Modified**
+- `src/pages/Dashboard.jsx`
+
+**Changes**
+- Extracted duplicate right-hand card layouts (Standby and Payload Loaded cards) into a local helper component `renderIntegrityScanCard({ isReady, content, footer })` to dry up duplicate JSX.
+- Synchronized metric cards by mapping `'extracting'` and `'predicting'` stages to `'ANALYZING'` for the top-left status metric card.
+- Simplified `LoadingOverlay` invocation by passing raw `stage` prop directly.
+- Refined Tailwind utility classes for the "Analyze Audio" button to fully strip hover glows, scaling, background shifts, and pointer cursors when the pipeline is active.
+- Renamed hook error states from `uploadError`/`setError` to `pipelineError`/`setPipelineError`.
+- Removed unused state variables `_rirFeatures`, `_breathingAnalysis` and their setters.
+- Removed obsolete aborted request console warning.
+- **Bug Fix**: Resolved a transition-state runtime crash (black screen) by adding a defensive `file` check to the `PredictionCard` conditional block (`stage === 'completed' && prediction && file`) so that when the file is removed, the component unmounts cleanly without attempting to access `.name` of a null reference. Simplified unnecessary optional chaining `file?.name` to `file.name`.
+
+---
+
+### 2. Sidebar Navigation Items
+**File Modified**
+- `src/layouts/DashboardLayout.jsx`
+
+**Changes**
+- Removed hover background highlight effects (`hover:bg-slate-900/30`) from disabled/under-construction menu navigation items, ensuring they appear static and non-interactive.
+
+---
+
+### 3. Audio Upload Portal
+**File Modified**
+- `src/components/AudioUpload.jsx`
+
+**Changes**
+- Conditioned hover style highlights, border shadow glows, scaling transition transforms, and pointer cursors to disable completely when a file is currently uploading (`uploading === true`) for the remove button, dropzone wrapper, and inline `"browse your local filesystem"` anchor text.
+
+---
+
+### 4. Interactive Overlays, Badges, and Visualizers
+**Files Modified**
+- `src/components/LoadingOverlay.jsx`
+- `src/components/StatusBadge.jsx`
+- `src/components/WaveformViewer.jsx`
+
+**Changes**
+- **LoadingOverlay**: Encapsulated overlay rendering checks so that the component returns `null` inside if `stage` matches `'idle'`, `'completed'`, or `'failed'`. Fixed JSDoc documentation stage listings.
+- **StatusBadge**: Added explicit `'analyzing'` case key to the badge theme styles switch-case selector.
+- **WaveformViewer**: Removed interactive Tailwind utilities (`cursor-pointer`, `hover:fill-cyber-cyan`, transition animations) from the SVG waveform bars to make it clear that the visualizer is display-only.
+
+---
+
+## Outcome
+The Day 16 refinements dry up components, enforce consistent pipeline state updates, standardise disabled-state visual cues, and fix a critical transitional runtime crash while maintaining 100% theme layout and API parity.
+
+## Day 16 completed

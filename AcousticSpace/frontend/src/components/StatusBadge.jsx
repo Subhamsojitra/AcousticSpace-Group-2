@@ -44,6 +44,7 @@ export default function StatusBadge({ status, customLabel }) {
     case 'uploading':
     case 'extracting':
     case 'predicting':
+    case 'analyzing':
       themeClass = 'bg-cyber-cyan/10 text-cyber-cyan border-cyber-cyan/30';
       dotClass = 'bg-cyber-cyan animate-pulse';
       if (!customLabel) {

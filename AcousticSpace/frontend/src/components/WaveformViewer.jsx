@@ -258,7 +258,7 @@ export default function WaveformViewer({
                       width={barWidth}
                       height={height}
                       rx={2}
-                      className="fill-[url(#waveform-gradient)] hover:fill-cyber-cyan transition-all duration-150 cursor-pointer"
+                      className="fill-[url(#waveform-gradient)]"
                     >
                       <title>{`Amplitude Sample #${i + 1}: ${(amplitude * 100).toFixed(0)}%`}</title>
                     </rect>

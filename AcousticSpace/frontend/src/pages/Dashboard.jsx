@@ -43,6 +43,7 @@ const THEME_CLASSES = {
 const getPipelineStatus = (stage, hasFile) => {
   if (stage === 'completed') return { value: 'ANALYZED', theme: 'green' };
   if (stage === 'failed') return { value: 'FAILED', theme: 'rose' };
+  if (stage === 'extracting' || stage === 'predicting') return { value: 'ANALYZING', theme: 'cyan' };
   if (stage !== 'idle') return { value: stage.toUpperCase(), theme: 'cyan' };
   if (hasFile) return { value: 'READY', theme: 'cyan' };
   return { value: 'STANDBY', theme: 'gray' };
@@ -59,7 +60,7 @@ const getScannerConfig = (status) => {
 
 export default function Dashboard({ apiStatus = 'checking' }) {
   const fileUpload = useFileUpload();
-  const { file, error: uploadError, handleFileChange, removeFile, setError } = fileUpload;
+  const { file, error: pipelineError, handleFileChange, removeFile, setError: setPipelineError } = fileUpload;
 
   // Pipeline execution stages: 'idle' | 'uploading' | 'extracting' | 'predicting' | 'completed' | 'failed'
   const [stage, setStage] = useState('idle');
@@ -70,8 +71,6 @@ export default function Dashboard({ apiStatus = 'checking' }) {
   const [prediction, setPrediction] = useState(null);
   const [confidence, setConfidence] = useState(null);
   const [analysisInfo, setAnalysisInfo] = useState(null);
-  const [_rirFeatures, setRirFeatures] = useState(null);
-  const [_breathingAnalysis, setBreathingAnalysis] = useState(null);
   const [processingTime, setProcessingTime] = useState(null);
   const [timestamp, setTimestamp] = useState(null);
 
@@ -88,8 +87,6 @@ export default function Dashboard({ apiStatus = 'checking' }) {
     setPrediction(null);
     setConfidence(null);
     setAnalysisInfo(null);
-    setRirFeatures(null);
-    setBreathingAnalysis(null);
     setProcessingTime(null);
     setTimestamp(null);
   };
@@ -102,7 +99,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
   };
 
   const resetPipelineState = () => {
-    setError(null);
+    setPipelineError(null);
     clearPredictionState();
     setFileId(null);
   };
@@ -115,13 +112,13 @@ export default function Dashboard({ apiStatus = 'checking' }) {
     }
     isExecutingRef.current = false;
 
-    setError(null); // Clear previous errors before new upload lifecycle starts
+    setPipelineError(null); // Clear previous errors before new upload lifecycle starts
     if (!file) {
       initializePipelineState('Awaiting Audio Upload');
     } else {
       initializePipelineState('Payload loaded. Ready to run forensic analysis.');
     }
-  }, [file, setError]);
+  }, [file, setPipelineError]);
 
   // Handle component unmount cleanup
   useEffect(() => {
@@ -164,10 +161,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
       // 2. Extraction stage
       setStage('extracting');
       setPipelineMessage('Decoding spatial indicators...');
-      const analysisRes = await analyzeAudio(fileIdVal, signal);
-
-      setRirFeatures(analysisRes.rir_features || null);
-      setBreathingAnalysis(analysisRes.breathing_analysis || null);
+      await analyzeAudio(fileIdVal, signal);
 
       // 3. Predicting stage
       setStage('predicting');
@@ -187,8 +181,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
       setStage('completed');
       setPipelineMessage(`Analysis completed in ${elapsedSecs}s.`);
     } catch (err) {
-      if (err.name === 'AbortError' || err.message?.includes('aborted') || signal.aborted) {
-        console.log('Pipeline run aborted.');
+      if (err.name === 'AbortError' || (err.message && err.message.includes('aborted')) || signal.aborted) {
         return;
       }
       console.error('Scan pipeline failure:', err);
@@ -196,7 +189,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
       setPipelineMessage('Scan pipeline failed.');
       
       const readableMessage = getErrorMessage(err, apiStatusRef.current);
-      setError(readableMessage);
+      setPipelineError(readableMessage);
     } finally {
       if (abortControllerRef.current === controller) {
         isExecutingRef.current = false;
@@ -220,10 +213,29 @@ export default function Dashboard({ apiStatus = 'checking' }) {
   const pipelineStatus = getPipelineStatus(stage, !!file);
   const scannerConfig = getScannerConfig(apiStatus);
 
+  const renderIntegrityScanCard = ({ isReady, content, footer }) => {
+    const shieldClass = isReady ? 'text-cyber-cyan animate-pulse' : 'text-slate-500';
+    const titleClass = isReady ? 'text-slate-200' : 'text-slate-400';
+    return (
+      <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden h-full flex flex-col justify-between p-6 min-h-[400px]">
+        <div className={isReady ? 'space-y-4' : 'space-y-6'}>
+          <div className="flex items-center gap-2 pb-4 border-b border-cyber-border">
+            <Shield className={shieldClass} size={18} />
+            <h2 className={`font-display font-semibold ${titleClass}`}>
+              Acoustic Integrity Scan
+            </h2>
+          </div>
+          {content}
+        </div>
+        {footer}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn relative">
-      {/* Loading Overlay - Passed stage is mapped so it is dismissed on failed status to reveal retry dashboard options */}
-      <LoadingOverlay stage={stage === 'failed' ? 'idle' : stage} error={uploadError} />
+      {/* Loading Overlay */}
+      <LoadingOverlay stage={stage} error={pipelineError} />
 
       {/* Page Header */}
       <div>
@@ -288,27 +300,27 @@ export default function Dashboard({ apiStatus = 'checking' }) {
             fileId={fileId}
           />
 
-          {/* Dynamic Waveform Visualizer */}
+          {/* Dynamic Waveform Viewer */}
           <WaveformViewer file={file} />
         </div>
 
         {/* Right Column: Acoustic Integrity Report */}
         <div className="space-y-8">
           {/* Error Alert Display */}
-          {uploadError && (
+          {pipelineError && (
             <ErrorAlert 
-              message={uploadError} 
+              message={pipelineError} 
               onRetry={runPipeline} 
               title="Pipeline Execution Error"
             />
           )}
 
-          {stage === 'completed' && prediction ? (
+          {stage === 'completed' && prediction && file ? (
             /* Premium Prediction Result Card displaying only returned fields */
             <PredictionCard 
               prediction={prediction}
               confidence={confidence}
-              filename={file?.name}
+              filename={file.name}
               timestamp={timestamp}
               processingTime={processingTime}
               analysis={analysisInfo}
@@ -318,15 +330,9 @@ export default function Dashboard({ apiStatus = 'checking' }) {
             <PredictionCardSkeleton />
           ) : file ? (
             /* Ready to Scan State */
-            <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden h-full flex flex-col justify-between p-6 min-h-[400px]">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-4 border-b border-cyber-border">
-                  <Shield className="text-cyber-cyan animate-pulse" size={18} />
-                  <h2 className="font-display font-semibold text-slate-200">
-                    Acoustic Integrity Scan
-                  </h2>
-                </div>
-                
+            renderIntegrityScanCard({
+              isReady: true,
+              content: (
                 <div className="p-4 bg-slate-950/40 border border-cyber-border/50 rounded-lg flex flex-col items-center justify-center text-center space-y-3 py-8">
                   <div className="p-3 bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan rounded-full animate-pulse">
                     <FileAudio size={28} />
@@ -340,36 +346,33 @@ export default function Dashboard({ apiStatus = 'checking' }) {
                     </p>
                   </div>
                 </div>
-              </div>
-
-              <div className="space-y-4 pt-6 border-t border-cyber-border/40">
-                <button
-                  type="button"
-                  onClick={runPipeline}
-                  disabled={isRunning}
-                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 bg-cyber-cyan hover:bg-cyber-cyan/90 text-cyber-black font-display font-bold rounded-lg transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider text-sm ${
-                    isRunning ? 'cursor-not-allowed' : 'cursor-pointer'
-                  }`}
-                >
-                  <Play size={16} fill="currentColor" />
-                  <span>Analyze Audio</span>
-                </button>
-                <p className="text-[9px] text-center text-slate-500 font-mono leading-relaxed">
-                  Target signal will be checked against room reflections (RT60) & pause cadences.
-                </p>
-              </div>
-            </div>
+              ),
+              footer: (
+                <div className="space-y-4 pt-6 border-t border-cyber-border/40">
+                  <button
+                    type="button"
+                    onClick={runPipeline}
+                    disabled={isRunning}
+                    className={`w-full flex items-center justify-center gap-2 py-3 px-4 text-cyber-black font-display font-bold rounded-lg transition-all duration-300 uppercase tracking-wider text-sm ${
+                      isRunning
+                        ? 'bg-cyber-cyan/50 opacity-50 cursor-not-allowed shadow-none'
+                        : 'bg-cyber-cyan hover:bg-cyber-cyan/90 cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)]'
+                    }`}
+                  >
+                    <Play size={16} fill="currentColor" />
+                    <span>Analyze Audio</span>
+                  </button>
+                  <p className="text-[9px] text-center text-slate-500 font-mono leading-relaxed">
+                    Target signal will be checked against room reflections (RT60) & pause cadences.
+                  </p>
+                </div>
+              ),
+            })
           ) : (
             /* Standby Card State - Polished Checklist Placeholder Panel */
-            <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden h-full flex flex-col justify-between p-6 min-h-[400px]">
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 pb-4 border-b border-cyber-border">
-                  <Shield className="text-slate-500" size={18} />
-                  <h2 className="font-display font-semibold text-slate-400">
-                    Acoustic Integrity Scan
-                  </h2>
-                </div>
-
+            renderIntegrityScanCard({
+              isReady: false,
+              content: (
                 <div className="space-y-4">
                   {/* Status Indicator */}
                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-950/40 border border-cyber-border/50 rounded-lg w-fit">
@@ -395,12 +398,13 @@ export default function Dashboard({ apiStatus = 'checking' }) {
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="pt-6 border-t border-cyber-border/40 text-[9px] text-center text-slate-500 font-mono">
-                SECURED THREAT NODE CHANNEL
-              </div>
-            </div>
+              ),
+              footer: (
+                <div className="pt-6 border-t border-cyber-border/40 text-[9px] text-center text-slate-500 font-mono">
+                  SECURED THREAT NODE CHANNEL
+                </div>
+              ),
+            })
           )}
         </div>
 
