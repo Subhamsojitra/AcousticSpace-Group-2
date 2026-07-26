@@ -8,11 +8,11 @@ import AnalysisProgress from './AnalysisProgress';
  * Renders the step-by-step progress visual indicator.
  * 
  * @param {Object} props
- * @param {string} props.stage - The current stage ('uploading', 'extracting', 'detecting', 'generating')
+ * @param {string} props.stage - The current stage ('uploading', 'extracting', 'predicting')
  * @param {boolean|string} [props.error] - Current error status of the running pipeline
  */
 export default function LoadingOverlay({ stage, error = null }) {
-  if (!stage || stage === 'completed' || stage === 'idle') return null;
+  if (!stage || stage === 'completed' || stage === 'idle' || stage === 'failed') return null;
 
   return (
     <div className="fixed inset-0 bg-cyber-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300 animate-fadeIn">

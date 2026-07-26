@@ -50,7 +50,7 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
               return (
                 <div
                   key={item.name}
-                  className="flex items-center gap-3 px-4 py-3 text-sm text-slate-600 cursor-not-allowed rounded-lg hover:bg-slate-900/30 transition-all group"
+                  className="flex items-center gap-3 px-4 py-3 text-sm text-slate-600 cursor-not-allowed rounded-lg transition-all group"
                   title="Under construction - Phase 2"
                 >
                   <Icon size={18} className="text-slate-700" />
