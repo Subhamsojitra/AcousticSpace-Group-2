@@ -4,6 +4,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
 import { API_BASE_URL } from './config/apiConfig';
+import { ThemeProvider } from './context/ThemeContext';
 
 function App() {
   const [apiStatus, setApiStatus] = useState('checking'); // 'online' | 'offline' | 'checking'
@@ -39,14 +40,16 @@ function App() {
   }, []);
 
   return (
-    <Router>
-      <DashboardLayout apiStatus={apiStatus} latency={latency}>
-        <Routes>
-          <Route path="/" element={<Dashboard apiStatus={apiStatus} latency={latency} />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </DashboardLayout>
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <DashboardLayout apiStatus={apiStatus} latency={latency}>
+          <Routes>
+            <Route path="/" element={<Dashboard apiStatus={apiStatus} latency={latency} />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </DashboardLayout>
+      </Router>
+    </ThemeProvider>
   );
 }
 

@@ -24,11 +24,11 @@ export default function InfoRow({
 
   if (variant === 'card') {
     return (
-      <div className={`p-3 bg-slate-950/40 border border-cyber-border/50 rounded-lg font-mono ${className}`}>
-        <span className={`text-[10px] text-slate-500 uppercase block mb-1 tracking-wider ${labelClassName}`}>
+      <div className={`p-3 bg-white/[0.01] border border-cyber-border rounded-xl font-mono ${className}`}>
+        <span className={`text-[9px] text-text-secondary uppercase block mb-0.5 tracking-wider ${labelClassName}`}>
           {label}
         </span>
-        <span className={`text-slate-200 font-semibold text-xs ${valueClassName}`}>
+        <span className={`text-text-primary font-semibold text-xs ${valueClassName}`}>
           {displayValue}
         </span>
       </div>
@@ -36,9 +36,9 @@ export default function InfoRow({
   }
 
   return (
-    <div className={`flex items-center justify-between font-mono text-xs ${className}`}>
-      <span className={`text-slate-500 ${labelClassName}`}>{label}</span>
-      <span className={`text-slate-400 font-medium ${valueClassName}`}>{displayValue}</span>
+    <div className={`flex items-center justify-between font-mono text-[11px] ${className}`}>
+      <span className={`text-text-secondary ${labelClassName}`}>{label}</span>
+      <span className={`text-text-secondary font-medium ${valueClassName}`}>{displayValue}</span>
     </div>
   );
 }

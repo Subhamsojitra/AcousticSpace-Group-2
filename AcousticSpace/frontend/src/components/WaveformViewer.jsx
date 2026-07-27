@@ -136,29 +136,29 @@ export default function WaveformViewer({
   }, [file, externalWaveformData]);
 
   return (
-    <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden transition-all duration-300">
+    <div className="bg-zinc-950/45 backdrop-blur-xl border border-white/5 rounded-2xl shadow-lg overflow-hidden transition-all duration-300">
       {/* Header Panel */}
-      <div className="p-6 border-b border-cyber-border flex items-center justify-between">
+      <div className="p-6 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity className="text-cyber-cyan" size={18} />
-          <h2 className="font-display font-semibold text-slate-200">
+          <Activity className="text-zinc-400" size={16} />
+          <h2 className="font-display font-semibold text-xs tracking-wide uppercase text-zinc-300">
             Spectral Waveform Analyzer
           </h2>
         </div>
         <div className="flex items-center gap-2">
           {!file && !externalWaveformData ? (
-            <span className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+            <span className="flex items-center gap-1.5 text-[9px] font-mono text-zinc-500">
+              <span className="w-1 h-1 rounded-full bg-zinc-600"></span>
               STANDBY
             </span>
           ) : isLoading ? (
-            <span className="flex items-center gap-1.5 text-[10px] font-mono text-cyber-cyan animate-pulse">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyber-cyan animate-ping"></span>
+            <span className="flex items-center gap-1.5 text-[9px] font-mono text-cyber-cyan animate-pulse">
+              <span className="w-1 h-1 rounded-full bg-cyber-cyan animate-ping"></span>
               DECODING
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 text-[10px] font-mono text-cyber-green">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyber-green"></span>
+            <span className="flex items-center gap-1.5 text-[9px] font-mono text-cyber-green">
+              <span className="w-1 h-1 rounded-full bg-cyber-green"></span>
               ANALYZED
             </span>
           )}
@@ -167,36 +167,36 @@ export default function WaveformViewer({
 
       <div className="p-6 space-y-4">
         {/* Metadata Details bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-950/60 border border-cyber-border/40 rounded-lg text-xs font-mono min-h-[46px]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white/[0.01] border border-white/5 rounded-xl text-[10px] font-mono min-h-[46px]">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-slate-500 uppercase shrink-0">File:</span>
-            <span className="text-slate-200 truncate font-semibold" title={file ? file.name : 'No file selected'}>
+            <span className="text-zinc-500 uppercase shrink-0">File:</span>
+            <span className="text-zinc-300 truncate font-semibold" title={file ? file.name : 'No file selected'}>
               {file ? file.name : '—'}
             </span>
           </div>
-          <div className="flex items-center gap-4 shrink-0 text-slate-400">
+          <div className="flex items-center gap-4 shrink-0 text-zinc-400">
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500 uppercase">Size:</span>
+              <span className="text-zinc-500 uppercase">Size:</span>
               <span>{file ? formatFileSize(file.size) : '—'}</span>
             </div>
           </div>
         </div>
 
         {/* Waveform Visualization Canvas / SVG Area */}
-        <div className="p-6 bg-slate-950/40 border border-cyber-border/20 rounded-xl relative overflow-hidden flex flex-col justify-center min-h-[160px] glow-shadow-cyan">
+        <div className="p-6 bg-white/[0.01] border border-white/5 rounded-2xl relative overflow-hidden flex flex-col justify-center min-h-[160px]">
           {/* Subtle grid background for high-tech analyzer feel */}
           <div 
-            className="absolute inset-0 opacity-[0.03] pointer-events-none"
+            className="absolute inset-0 opacity-[0.015] pointer-events-none"
             style={{
-              backgroundImage: 'linear-gradient(to right, #06b6d4 1px, transparent 1px), linear-gradient(to bottom, #06b6d4 1px, transparent 1px)',
-              backgroundSize: '20px 20px'
+              backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)',
+              backgroundSize: '24px 24px'
             }}
           ></div>
 
           {!file && !externalWaveformData ? (
             /* Standby State Waveform */
             <div className="relative w-full h-32 flex items-center justify-center select-none">
-              <svg className="w-full h-full text-slate-800/25 animate-pulse" viewBox="0 0 500 100" preserveAspectRatio="none">
+              <svg className="w-full h-full text-zinc-800/10 animate-pulse" viewBox="0 0 500 100" preserveAspectRatio="none">
                 {[...Array(80)].map((_, i) => {
                   const x = 5 + i * 6.2;
                   const height = 15 + Math.sin(x * 0.05) * 8;
@@ -210,22 +210,22 @@ export default function WaveformViewer({
                       width="4"
                       height={height}
                       rx="2"
-                      className="fill-slate-800/40"
+                      className="fill-white/5"
                     />
                   );
                 })}
               </svg>
               
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest border border-slate-800 bg-slate-950 px-3 py-1.5 rounded">
+                <p className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider border border-white/5 bg-zinc-950 px-3 py-1 rounded-md">
                   Awaiting Audio Upload
                 </p>
               </div>
             </div>
           ) : isLoading ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-3 z-10">
-              <BarChart2 className="text-cyber-cyan animate-pulse" size={32} />
-              <p className="text-xs font-mono text-slate-400 uppercase tracking-wider animate-pulse">
+              <BarChart2 className="text-zinc-500 animate-pulse" size={24} />
+              <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider animate-pulse">
                 Demuxing Audio Channels...
               </p>
             </div>
@@ -238,9 +238,9 @@ export default function WaveformViewer({
               >
                 <defs>
                   <linearGradient id="waveform-gradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.8" />
-                    <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.8" />
+                    <stop offset="0%" stopColor="#0a84ff" stopOpacity="0.85" />
+                    <stop offset="50%" stopColor="#0a84ff" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#0a84ff" stopOpacity="0.85" />
                   </linearGradient>
                 </defs>
                 {amplitudes.map((amplitude, i) => {
@@ -270,9 +270,9 @@ export default function WaveformViewer({
 
           {/* Error Message if failed to load */}
           {hasError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/80 p-4 text-center z-20">
-              <div className="flex items-center gap-2 text-xs font-mono text-cyber-rose">
-                <Info size={14} />
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/90 p-4 text-center z-20">
+              <div className="flex items-center gap-2 text-[10px] font-mono text-cyber-rose">
+                <Info size={12} />
                 <span>{hasError}</span>
               </div>
             </div>
@@ -280,8 +280,8 @@ export default function WaveformViewer({
         </div>
 
         {/* Informative micro-note */}
-        <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono">
-          <Info size={12} className="text-cyber-cyan/60" />
+        <div className="flex items-center gap-2 text-[9px] text-zinc-650 font-mono">
+          <Info size={11} className="text-zinc-600" />
           <span>Pure client-side FFT decoding. No telemetry or server interaction.</span>
         </div>
       </div>

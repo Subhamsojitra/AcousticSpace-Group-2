@@ -12,16 +12,16 @@ import { ShieldAlert, RefreshCw } from 'lucide-react';
  */
 export default function ErrorAlert({ message, onRetry, title = "SYSTEM ERROR" }) {
   return (
-    <div className="flex flex-col md:flex-row items-start justify-between gap-4 p-5 bg-cyber-rose/10 border border-cyber-rose/30 rounded-xl text-slate-200 animate-fadeIn glow-shadow-rose">
+    <div className="flex flex-col md:flex-row items-start justify-between gap-4 p-5 bg-cyber-dark backdrop-blur-xl border border-cyber-rose/20 rounded-2xl text-text-primary animate-fadeIn shadow-lg">
       <div className="flex items-start gap-4">
-        <div className="p-3 bg-cyber-rose/10 border border-cyber-rose/30 rounded-lg text-cyber-rose">
-          <ShieldAlert size={24} />
+        <div className="p-2.5 bg-white/5 border border-cyber-rose/20 rounded-lg text-cyber-rose">
+          <ShieldAlert size={20} />
         </div>
         <div className="space-y-1">
-          <h4 className="text-sm font-mono font-bold text-cyber-rose uppercase tracking-widest">
+          <h4 className="text-[11px] font-mono font-bold text-cyber-rose uppercase tracking-wider">
             {title}
           </h4>
-          <p className="text-xs text-slate-300 leading-relaxed font-mono">
+          <p className="text-xs text-text-secondary leading-relaxed font-mono">
             {message || "An unexpected error occurred during audio classification."}
           </p>
         </div>
@@ -31,9 +31,9 @@ export default function ErrorAlert({ message, onRetry, title = "SYSTEM ERROR" })
         <button
           type="button"
           onClick={onRetry}
-          className="flex items-center gap-2 px-4 py-2 bg-cyber-rose/25 hover:bg-cyber-rose/35 border border-cyber-rose/40 hover:border-cyber-rose/60 text-slate-200 hover:text-slate-100 font-mono text-xs font-bold rounded-lg transition-all cursor-pointer uppercase tracking-wider shrink-0 w-full md:w-auto justify-center"
+          className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white font-mono text-[10px] font-semibold rounded-lg transition-all cursor-pointer uppercase tracking-wider shrink-0 w-full md:w-auto justify-center"
         >
-          <RefreshCw size={14} />
+          <RefreshCw size={12} />
           <span>Retry Analysis</span>
         </button>
       )}

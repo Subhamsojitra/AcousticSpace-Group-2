@@ -22,8 +22,8 @@ export default function StatusBadge({ status, customLabel }) {
     case 'authentic':
     case 'completed':
     case 'success':
-      themeClass = 'bg-cyber-green/10 text-cyber-green border-cyber-green/30';
-      dotClass = 'bg-cyber-green animate-pulse';
+      themeClass = 'bg-white/5 text-cyber-green border-white/10 shadow-sm';
+      dotClass = 'bg-cyber-green';
       if (!customLabel) {
         text = normalizedStatus === 'real' ? 'REAL AUDIO' : statusStr.toUpperCase();
       }
@@ -33,8 +33,8 @@ export default function StatusBadge({ status, customLabel }) {
     case 'suspicious':
     case 'failed':
     case 'error':
-      themeClass = 'bg-cyber-rose/10 text-cyber-rose border-cyber-rose/30';
-      dotClass = 'bg-cyber-rose animate-pulse';
+      themeClass = 'bg-white/5 text-cyber-rose border-white/10 shadow-sm';
+      dotClass = 'bg-cyber-rose';
       if (!customLabel) {
         text = normalizedStatus === 'fake' ? 'DEEPFAKE' : statusStr.toUpperCase();
       }
@@ -45,23 +45,23 @@ export default function StatusBadge({ status, customLabel }) {
     case 'extracting':
     case 'predicting':
     case 'analyzing':
-      themeClass = 'bg-cyber-cyan/10 text-cyber-cyan border-cyber-cyan/30';
-      dotClass = 'bg-cyber-cyan animate-pulse';
+      themeClass = 'bg-white/5 text-cyber-cyan border-white/10 shadow-sm';
+      dotClass = 'bg-cyber-cyan';
       if (!customLabel) {
         text = statusStr.toUpperCase();
       }
       break;
     default:
-      themeClass = 'bg-slate-900 text-slate-400 border-slate-800';
-      dotClass = 'bg-slate-600';
+      themeClass = 'bg-white/5 text-zinc-400 border-white/5';
+      dotClass = 'bg-zinc-600';
       if (!customLabel) {
         text = statusStr ? statusStr.toUpperCase() : 'STANDBY';
       }
   }
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-[10px] font-mono font-bold tracking-wider transition-all duration-300 ${themeClass}`}>
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotClass}`} />
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[9px] font-mono font-semibold tracking-wider transition-all duration-350 ${themeClass}`}>
+      <span className={`w-1 h-1 rounded-full shrink-0 ${dotClass}`} />
       <span>{text}</span>
     </span>
   );
