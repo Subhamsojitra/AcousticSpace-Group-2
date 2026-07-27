@@ -66,16 +66,16 @@ export default function AudioUpload({
   };
 
   return (
-    <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden transition-all duration-300">
+    <div className="bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl shadow-sm overflow-hidden transition-all duration-300">
       {/* Portal Header */}
       <div className="p-6 border-b border-cyber-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <UploadCloud className="text-cyber-cyan" size={18} />
-          <h2 className="font-display font-semibold text-slate-200">
+          <UploadCloud className="text-text-secondary" size={16} />
+          <h2 className="font-display font-semibold text-xs tracking-wide uppercase text-text-primary">
             Audio Upload Portal
           </h2>
         </div>
-        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+        <span className="text-[9px] font-mono text-text-secondary uppercase tracking-widest">
           File Vault Gateway
         </span>
       </div>
@@ -102,76 +102,76 @@ export default function AudioUpload({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={handleBrowseClick}
-            className={`border border-dashed rounded-xl py-8 px-6 flex flex-col items-center justify-center text-center transition-all duration-300 ${
+            className={`border border-dashed rounded-2xl py-8 px-6 flex flex-col items-center justify-center text-center transition-all duration-300 ${
               uploading 
-                ? 'cursor-not-allowed border-slate-800 bg-slate-950/10 opacity-60'
+                ? 'cursor-not-allowed border-cyber-border bg-white/[0.01] opacity-60'
                 : isDragging
-                  ? 'border-cyber-cyan bg-cyber-cyan-glow/20 scale-[1.01] glow-shadow-cyan cursor-pointer'
-                  : 'border-slate-700/60 bg-slate-950/30 hover:border-cyber-cyan/40 hover:bg-slate-950/50 cursor-pointer'
+                  ? 'border-cyber-cyan bg-white/5 scale-[1.005] cursor-pointer'
+                  : 'border-cyber-border bg-white/[0.01] hover:border-cyber-border/40 hover:bg-white/[0.02] cursor-pointer'
             }`}
           >
-            <div className={`p-4 rounded-full border mb-4 transition-all duration-300 ${
+            <div className={`p-3.5 rounded-full border mb-4 transition-all duration-300 ${
               isDragging
-                ? 'bg-cyber-cyan text-cyber-black border-cyber-cyan shadow-[0_0_15px_rgba(6,182,212,0.4)]'
-                : 'bg-cyber-cyan-glow text-cyber-cyan border-cyber-cyan/10'
+                ? 'bg-[#0071e3] text-white border-transparent'
+                : 'bg-white/5 text-text-secondary border-cyber-border'
             }`}>
-              <UploadCloud size={32} className={isDragging ? 'animate-bounce' : ''} />
+              <UploadCloud size={24} className={isDragging ? 'animate-bounce' : ''} />
             </div>
             
-            <h3 className="font-display font-semibold text-slate-200 text-sm">
+            <h3 className="font-display font-semibold text-text-primary text-sm">
               {isDragging ? 'Drop file here to upload' : 'Drag and drop audio file here'}
             </h3>
             
-            <p className="text-xs text-slate-400 mt-1 max-w-xs font-mono">
-              or <span className={`text-cyber-cyan underline ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:text-cyber-cyan/80 cursor-pointer'}`}>browse your local filesystem</span>
+            <p className="text-xs text-text-secondary mt-1 max-w-xs font-mono">
+              or <span className={`text-cyber-cyan underline ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:text-cyber-cyan/90 cursor-pointer'}`}>browse your local filesystem</span>
             </p>
 
-            <div className="mt-4 flex items-center gap-2 text-[10px] text-slate-500 font-mono border border-cyber-border bg-slate-950/80 px-2.5 py-1.5 rounded">
+            <div className="mt-4 flex items-center gap-2 text-[9px] text-text-secondary font-mono border border-cyber-border bg-white/5 px-2.5 py-1.5 rounded-lg">
               <span>WAV, MP3, FLAC formats</span>
-              <span className="w-1 h-1 rounded-full bg-slate-800"></span>
+              <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
               <span>Max 15MB</span>
             </div>
           </div>
         ) : (
           /* High-Fidelity Preview Card */
-          <div className={`border bg-slate-950/40 rounded-xl p-6 glow-shadow-green animate-fadeIn space-y-4 transition-all duration-300 ${
+          <div className={`border bg-white/[0.01] rounded-2xl p-6 animate-fadeIn space-y-4 transition-all duration-300 ${
             uploading 
-              ? 'border-cyber-cyan/30 glow-shadow-cyan' 
-              : 'border-cyber-green/20'
+              ? 'border-cyber-cyan/20 glow-shadow-cyan' 
+              : 'border-cyber-border shadow-sm'
           }`}>
             <div className="flex items-center gap-4">
               {/* Decorative Audio Icon Badge */}
-              <div className={`p-3 border rounded-lg shadow-[0_0_10px_rgba(16,185,129,0.1)] transition-all ${
+              <div className={`p-3 border rounded-xl transition-all ${
                 uploading 
-                  ? 'bg-cyber-cyan-glow text-cyber-cyan border-cyber-cyan/20 animate-pulse' 
-                  : 'bg-cyber-green-glow text-cyber-green border-cyber-green/20'
+                  ? 'bg-white/5 text-cyber-cyan border-cyber-border animate-pulse' 
+                  : 'bg-white/5 text-text-primary border-cyber-border'
               }`}>
                 {uploading ? (
-                  <Loader2 size={28} className="animate-spin" />
+                  <Loader2 size={24} className="animate-spin" />
                 ) : (
-                  <FileAudio size={28} className="animate-pulse" />
+                  <FileAudio size={24} className="animate-pulse" />
                 )}
               </div>
               
               {/* General Metadata Info */}
               <div className="min-w-0 flex-1">
-                <h3 className="font-display font-semibold text-slate-200 text-sm truncate" title={file.name}>
+                <h3 className="font-display font-semibold text-text-primary text-sm truncate" title={file.name}>
                   {file.name}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-cyber-green-glow text-cyber-green border border-cyber-green/20">
+                  <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-white/5 text-text-secondary border border-cyber-border">
                     {getFileExtension(file.name) || 'AUDIO'}
                   </span>
-                  <span className="text-[11px] font-mono text-slate-400">
+                  <span className="text-[11px] font-mono text-text-secondary">
                     {formatFileSize(file.size)}
                   </span>
                   {uploading && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-cyber-cyan-glow text-cyber-cyan border border-cyber-cyan/20 animate-pulse">
+                    <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-white/5 text-cyber-cyan border border-cyber-cyan/10 animate-pulse">
                       PROCESSING...
                     </span>
                   )}
                   {fileId && !uploading && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-cyber-green-glow text-cyber-green border border-cyber-green/20">
+                    <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-white/5 text-cyber-green border border-cyber-green/10">
                       SECURED
                     </span>
                   )}
@@ -183,29 +183,29 @@ export default function AudioUpload({
                 type="button"
                 onClick={handleRemoveClick}
                 disabled={uploading}
-                className={`p-2 px-3 rounded-lg border flex items-center gap-1.5 font-mono text-xs font-bold shrink-0 transition-all duration-200 ${
+                className={`p-2 px-3 rounded-lg border flex items-center gap-1.5 font-mono text-[10px] font-semibold shrink-0 transition-all duration-200 ${
                   uploading
-                    ? 'border-cyber-rose/15 bg-cyber-rose-glow/10 text-cyber-rose/40 cursor-not-allowed opacity-50 shadow-none'
-                    : 'border-cyber-rose/30 bg-cyber-rose-glow/20 text-cyber-rose hover:bg-cyber-rose hover:text-slate-100 cursor-pointer shadow-none'
+                    ? 'border-cyber-border bg-white/5 text-text-secondary cursor-not-allowed opacity-40 shadow-none'
+                    : 'border-cyber-border bg-white/5 text-text-primary hover:bg-white/10 cursor-pointer shadow-none'
                 }`}
                 title="Remove File"
               >
-                <Trash2 size={14} />
+                <Trash2 size={12} />
                 <span>REMOVE</span>
               </button>
             </div>
 
             {/* Technical Detail Grid */}
-            <div className="pt-4 border-t border-cyber-border/40 grid grid-cols-1 sm:grid-cols-2 gap-4 text-[11px] font-mono">
+            <div className="pt-4 border-t border-cyber-border grid grid-cols-1 sm:grid-cols-2 gap-4 text-[10px] font-mono">
               <div className="space-y-1">
-                <span className="text-slate-500 uppercase tracking-wider block text-[9px]">MIME Type</span>
-                <span className="text-slate-300 block truncate">{file.type || 'audio/unknown'}</span>
+                <span className="text-text-secondary uppercase tracking-wider block text-[8px]">MIME Type</span>
+                <span className="text-text-primary block truncate">{file.type || 'audio/unknown'}</span>
               </div>
               <div className="space-y-1">
-                <span className="text-slate-500 uppercase tracking-wider block text-[9px]">
+                <span className="text-text-secondary uppercase tracking-wider block text-[8px]">
                   {fileId ? 'Server File ID' : 'Local Path Reference'}
                 </span>
-                <span className="text-slate-300 block truncate" title={fileId || `blob:acousticspace/${file.name.replace(/\s+/g, '-')}`}>
+                <span className="text-text-primary block truncate" title={fileId || `blob:acousticspace/${file.name.replace(/\s+/g, '-')}`}>
                   {fileId || `blob:acousticspace/${file.name.replace(/\s+/g, '-')}`}
                 </span>
               </div>

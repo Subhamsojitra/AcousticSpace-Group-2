@@ -19,24 +19,24 @@ import LoadingOverlay from '../components/LoadingOverlay';
 
 const THEME_CLASSES = {
   amber: {
-    border: 'border-cyber-border hover:border-amber-500/30 hover:shadow-[0_0_15px_rgba(245,158,11,0.05)]',
+    border: 'border-cyber-border hover:border-cyber-border/40 bg-white/[0.01]',
     dot: 'bg-amber-500',
   },
   cyan: {
-    border: 'border-cyber-border hover:border-cyber-cyan/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.05)]',
+    border: 'border-cyber-border hover:border-cyber-border/40 bg-white/[0.01]',
     dot: 'bg-cyber-cyan',
   },
   green: {
-    border: 'border-cyber-border hover:border-cyber-green/30 hover:shadow-[0_0_15px_rgba(16,185,129,0.05)]',
+    border: 'border-cyber-border hover:border-cyber-border/40 bg-white/[0.01]',
     dot: 'bg-cyber-green',
   },
   rose: {
-    border: 'border-cyber-border hover:border-cyber-rose/30 hover:shadow-[0_0_15px_rgba(244,63,94,0.05)]',
+    border: 'border-cyber-border hover:border-cyber-border/40 bg-white/[0.01]',
     dot: 'bg-cyber-rose',
   },
   gray: {
-    border: 'border-cyber-border hover:border-slate-700/30',
-    dot: 'bg-slate-600',
+    border: 'border-cyber-border hover:border-cyber-border/40 bg-white/[0.01]',
+    dot: 'bg-zinc-600',
   },
 };
 
@@ -214,14 +214,14 @@ export default function Dashboard({ apiStatus = 'checking' }) {
   const scannerConfig = getScannerConfig(apiStatus);
 
   const renderIntegrityScanCard = ({ isReady, content, footer }) => {
-    const shieldClass = isReady ? 'text-cyber-cyan animate-pulse' : 'text-slate-500';
-    const titleClass = isReady ? 'text-slate-200' : 'text-slate-400';
+    const shieldClass = isReady ? 'text-[#0a84ff]' : 'text-text-secondary';
+    const titleClass = isReady ? 'text-text-primary' : 'text-text-secondary';
     return (
-      <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden h-full flex flex-col justify-between p-6 min-h-[400px]">
+      <div className="bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl shadow-sm h-full flex flex-col justify-between p-6 min-h-[400px] metric-card">
         <div className={isReady ? 'space-y-4' : 'space-y-6'}>
           <div className="flex items-center gap-2 pb-4 border-b border-cyber-border">
-            <Shield className={shieldClass} size={18} />
-            <h2 className={`font-display font-semibold ${titleClass}`}>
+            <Shield className={shieldClass} size={16} />
+            <h2 className={`font-display font-semibold text-xs tracking-wide uppercase ${titleClass}`}>
               Acoustic Integrity Scan
             </h2>
           </div>
@@ -239,11 +239,11 @@ export default function Dashboard({ apiStatus = 'checking' }) {
 
       {/* Page Header */}
       <div>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-100">
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
           Acoustic Analysis Console
         </h1>
-        <p className="text-sm text-slate-400 font-mono mt-1">
-          AcousticSpace isolator: de-noises RIR (Room Impulse Response) reflections & checks synthetic cadence boundaries.
+        <p className="text-xs text-text-secondary mt-1.5 font-normal">
+          AcousticSpace: De-noises room reflections (RIR) and analyzes speech cadence boundaries.
         </p>
       </div>
 
@@ -264,19 +264,19 @@ export default function Dashboard({ apiStatus = 'checking' }) {
           return (
             <div 
               key={idx} 
-              className={`p-6 bg-cyber-dark rounded-xl border transition-all duration-300 min-h-[128px] flex flex-col justify-between ${themeConfig.border}`}
+              className={`p-5 bg-cyber-dark backdrop-blur-md rounded-2xl border min-h-[120px] flex flex-col justify-between metric-card ${themeConfig.border}`}
             >
               <div>
-                <span className="text-xs font-mono text-slate-500 uppercase tracking-widest block">
+                <span className="text-[9px] font-mono text-text-secondary uppercase tracking-wider block">
                   {m.label}
                 </span>
-                <span className="text-2xl font-display font-bold text-slate-100 mt-1 block">
+                <span className="text-lg font-semibold tracking-tight text-text-primary mt-1 block">
                   {m.value}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 mt-2">
+              <div className="flex items-center gap-1.5 mt-3">
                 <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${themeConfig.dot}`}></div>
-                <span className="text-[11px] font-mono text-slate-400 truncate" title={m.change}>
+                <span className="text-[10px] text-text-secondary truncate font-normal" title={m.change}>
                   {m.change}
                 </span>
               </div>
@@ -333,36 +333,36 @@ export default function Dashboard({ apiStatus = 'checking' }) {
             renderIntegrityScanCard({
               isReady: true,
               content: (
-                <div className="p-4 bg-slate-950/40 border border-cyber-border/50 rounded-lg flex flex-col items-center justify-center text-center space-y-3 py-8">
-                  <div className="p-3 bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan rounded-full animate-pulse">
-                    <FileAudio size={28} />
+                <div className="p-4 bg-white/[0.01] border border-cyber-border rounded-xl flex flex-col items-center justify-center text-center space-y-3 py-8">
+                  <div className="p-3 bg-white/5 border border-cyber-border text-text-primary rounded-full">
+                    <FileAudio size={24} className="text-text-secondary" />
                   </div>
                   <div>
-                    <h3 className="font-mono text-xs font-bold text-slate-200 uppercase tracking-widest">
-                      Acoustic Payload Loaded
+                    <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider font-mono">
+                       Acoustic Payload Loaded
                     </h3>
-                    <p className="text-[11px] text-slate-400 font-mono mt-1 max-w-xs">
+                    <p className="text-[10px] text-text-secondary font-normal mt-1 max-w-xs leading-normal">
                       File details verified. Local audio waveform decoded successfully.
                     </p>
                   </div>
                 </div>
               ),
               footer: (
-                <div className="space-y-4 pt-6 border-t border-cyber-border/40">
+                <div className="space-y-4 pt-6 border-t border-cyber-border">
                   <button
                     type="button"
                     onClick={runPipeline}
                     disabled={isRunning}
-                    className={`w-full flex items-center justify-center gap-2 py-3 px-4 text-cyber-black font-display font-bold rounded-lg transition-all duration-300 uppercase tracking-wider text-sm ${
+                    className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 font-medium rounded-lg transition-all duration-200 text-xs tracking-normal ${
                       isRunning
-                        ? 'bg-cyber-cyan/50 opacity-50 cursor-not-allowed shadow-none'
-                        : 'bg-cyber-cyan hover:bg-cyber-cyan/90 cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)]'
+                        ? 'bg-white/5 text-text-secondary border border-cyber-border cursor-not-allowed shadow-none'
+                        : 'bg-[#0071e3] text-white hover:bg-[#0077ed] cursor-pointer shadow-sm shadow-blue-500/10'
                     }`}
                   >
-                    <Play size={16} fill="currentColor" />
+                    <Play size={12} fill="currentColor" />
                     <span>Analyze Audio</span>
                   </button>
-                  <p className="text-[9px] text-center text-slate-500 font-mono leading-relaxed">
+                  <p className="text-[9px] text-center text-text-secondary font-mono leading-relaxed">
                     Target signal will be checked against room reflections (RT60) & pause cadences.
                   </p>
                 </div>
@@ -375,33 +375,33 @@ export default function Dashboard({ apiStatus = 'checking' }) {
               content: (
                 <div className="space-y-4">
                   {/* Status Indicator */}
-                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-950/40 border border-cyber-border/50 rounded-lg w-fit">
-                    <div className="h-2 w-2 rounded-full bg-cyber-rose"></div>
-                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest font-semibold">
+                  <div className="flex items-center gap-2 px-2.5 py-1 bg-white/5 border border-cyber-border rounded-md w-fit">
+                    <div className="h-1.5 w-1.5 rounded-full bg-zinc-500"></div>
+                    <span className="text-[9px] text-text-secondary uppercase tracking-wider font-semibold font-mono">
                       Awaiting Analysis
                     </span>
                   </div>
-
+ 
                   {/* Flow Steps Checklist */}
-                  <div className="space-y-3 font-mono text-xs">
-                    <div className="flex items-center gap-3 p-3 bg-slate-950/20 border border-slate-800/40 rounded-lg text-slate-400">
-                      <span className="h-5 w-5 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-500 font-bold shrink-0">1</span>
-                      <span className="font-medium text-slate-300">Upload an audio sample</span>
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-center gap-3 p-3 bg-white/[0.01] border border-cyber-border rounded-xl text-text-secondary">
+                      <span className="h-4.5 w-4.5 rounded-full bg-white/5 border border-cyber-border flex items-center justify-center text-[10px] text-text-secondary font-bold shrink-0">1</span>
+                      <span className="font-medium text-text-primary">Upload an audio sample</span>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-slate-950/20 border border-slate-800/40 rounded-lg text-slate-500">
-                      <span className="h-5 w-5 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-600 font-bold shrink-0">2</span>
-                      <span className="font-medium text-slate-500">Run forensic analysis</span>
+                    <div className="flex items-center gap-3 p-3 bg-white/[0.01] border border-cyber-border rounded-xl text-text-secondary">
+                      <span className="h-4.5 w-4.5 rounded-full bg-white/[0.02] border border-cyber-border flex items-center justify-center text-[10px] text-text-secondary font-bold shrink-0">2</span>
+                      <span className="font-medium text-text-primary">Run forensic analysis</span>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-slate-950/20 border border-slate-800/40 rounded-lg text-slate-500">
-                      <span className="h-5 w-5 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-600 font-bold shrink-0">3</span>
-                      <span className="font-medium text-slate-500">View prediction report</span>
+                    <div className="flex items-center gap-3 p-3 bg-white/[0.01] border border-cyber-border rounded-xl text-text-secondary">
+                      <span className="h-4.5 w-4.5 rounded-full bg-white/[0.02] border border-cyber-border flex items-center justify-center text-[10px] text-text-secondary font-bold shrink-0">3</span>
+                      <span className="font-medium text-text-primary">View prediction report</span>
                     </div>
                   </div>
                 </div>
               ),
               footer: (
-                <div className="pt-6 border-t border-cyber-border/40 text-[9px] text-center text-slate-500 font-mono">
-                  SECURED THREAT NODE CHANNEL
+                <div className="pt-4 border-t border-cyber-border text-[9px] text-center text-text-secondary tracking-widest font-mono">
+                  SECURED NODE CHANNEL
                 </div>
               ),
             })

@@ -8,11 +8,16 @@ import {
   Terminal, 
   Database, 
   Radio,
-  Cpu as CpuIcon
+  Cpu as CpuIcon,
+  Sun,
+  Moon,
+  Laptop
 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function DashboardLayout({ children, apiStatus = 'checking', latency = null }) {
   const location = useLocation();
+  const { theme, setTheme } = useTheme();
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: Activity },
@@ -21,21 +26,27 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
     { name: 'Model settings', path: '/settings', icon: Settings, disabled: true },
   ];
 
+  const themes = ['system', 'light', 'dark'];
+  const handleToggleTheme = () => {
+    const nextIdx = (themes.indexOf(theme) + 1) % themes.length;
+    setTheme(themes[nextIdx]);
+  };
+
   return (
-    <div className="flex h-screen bg-cyber-black text-slate-100 overflow-hidden font-sans">
+    <div className="flex h-screen bg-cyber-black text-text-primary overflow-hidden font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-cyber-dark border-r border-cyber-border flex flex-col z-20">
+      <aside className="w-64 bg-cyber-dark backdrop-blur-xl border-r border-cyber-border flex flex-col z-20">
         {/* Brand Logo */}
         <div className="p-6 border-b border-cyber-border flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-cyber-cyan-glow border border-cyber-cyan/30 text-cyber-cyan glow-shadow-cyan">
-            <ShieldAlert size={22} className="animate-pulse" />
+          <div className="p-2 rounded-lg bg-white/5 border border-cyber-border text-text-primary">
+            <ShieldAlert size={20} className="text-zinc-500" />
           </div>
           <div>
-            <h1 className="font-display font-bold text-lg leading-tight tracking-wider text-slate-100">
-              ACOUSTIC<span className="text-cyber-cyan">SPACE</span>
+            <h1 className="font-display font-bold text-[14px] leading-tight tracking-tight text-text-primary uppercase">
+              ACOUSTIC<span className="text-zinc-500 font-medium">SPACE</span>
             </h1>
-            <p className="text-[10px] text-cyber-cyan font-mono uppercase tracking-widest">
-              RIR Deepfake Scanner
+            <p className="text-[9px] text-zinc-500 font-mono uppercase tracking-wider mt-0.5">
+              RIR Forensic Console
             </p>
           </div>
         </div>
@@ -50,12 +61,12 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
               return (
                 <div
                   key={item.name}
-                  className="flex items-center gap-3 px-4 py-3 text-sm text-slate-600 cursor-not-allowed rounded-lg transition-all group"
+                  className="flex items-center gap-3 px-4 py-2.5 text-xs text-zinc-500 cursor-not-allowed rounded-lg transition-all group"
                   title="Under construction - Phase 2"
                 >
-                  <Icon size={18} className="text-slate-700" />
+                  <Icon size={16} className="text-zinc-600" />
                   <span>{item.name}</span>
-                  <span className="ml-auto text-[9px] font-mono border border-slate-800 bg-slate-950 px-1 py-0.5 rounded text-slate-600">
+                  <span className="ml-auto text-[8px] font-mono border border-cyber-border bg-white/5 px-1.5 py-0.5 rounded text-zinc-500">
                     LOCK
                   </span>
                 </div>
@@ -66,13 +77,13 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
               <Link
                 key={item.name}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group ${
+                className={`flex items-center gap-3 px-4 py-2.5 text-xs font-medium rounded-lg transition-all duration-200 group ${
                   isActive 
-                    ? 'bg-cyber-cyan-glow text-cyber-cyan border border-cyber-cyan/20 glow-shadow-cyan' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/55 border border-transparent'
+                    ? 'bg-white/5 text-text-primary border border-cyber-border shadow-sm' 
+                    : 'text-zinc-400 hover:text-text-primary hover:bg-white/[0.02] border border-transparent'
                 }`}
               >
-                <Icon size={18} className={isActive ? 'text-cyber-cyan' : 'text-slate-400 group-hover:text-cyber-cyan transition-colors'} />
+                <Icon size={16} className={isActive ? 'text-cyber-cyan' : 'text-zinc-500 group-hover:text-zinc-300 transition-colors'} />
                 <span>{item.name}</span>
               </Link>
             );
@@ -80,15 +91,15 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
         </nav>
 
         {/* System Diagnostics Box */}
-        <div className="p-4 border-t border-cyber-border bg-slate-950/40">
-          <h3 className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-3">
+        <div className="p-4 border-t border-cyber-border bg-white/[0.01]">
+          <h3 className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider mb-3">
             SYSTEM DIAGNOSTICS
           </h3>
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-[11px] font-mono">
-              <span className="text-slate-500 flex items-center gap-1.5">
+            <div className="flex items-center justify-between text-[10px] font-mono">
+              <span className="text-zinc-500 flex items-center gap-1.5">
                 <Radio 
-                  size={12} 
+                  size={11} 
                   className={
                     apiStatus === 'online' 
                       ? 'text-cyber-green animate-pulse' 
@@ -113,24 +124,24 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
                     : 'OFFLINE'}
               </span>
             </div>
-            <div className="flex items-center justify-between text-[11px] font-mono">
-              <span className="text-slate-500 flex items-center gap-1.5">
+            <div className="flex items-center justify-between text-[10px] font-mono">
+              <span className="text-zinc-500 flex items-center gap-1.5">
                 <CpuIcon 
-                  size={12} 
-                  className={apiStatus === 'online' ? 'text-cyber-green' : 'text-slate-600'} 
+                  size={11} 
+                  className={apiStatus === 'online' ? 'text-cyber-green' : 'text-zinc-700'} 
                 />
                 AST MODEL v2.4
               </span>
-              <span className={`font-semibold ${apiStatus === 'online' ? 'text-cyber-green' : 'text-slate-500'}`}>
+              <span className={`font-semibold ${apiStatus === 'online' ? 'text-cyber-green' : 'text-zinc-500'}`}>
                 {apiStatus === 'online' ? 'READY' : 'OFFLINE'}
               </span>
             </div>
-            <div className="flex items-center justify-between text-[11px] font-mono">
-              <span className="text-slate-500 flex items-center gap-1.5">
-                <Database size={12} className={apiStatus === 'online' ? 'text-cyber-cyan' : 'text-slate-600'} />
+            <div className="flex items-center justify-between text-[10px] font-mono">
+              <span className="text-zinc-500 flex items-center gap-1.5">
+                <Database size={11} className={apiStatus === 'online' ? 'text-cyber-cyan' : 'text-zinc-700'} />
                 LATENCY
               </span>
-              <span className={`font-semibold ${apiStatus === 'online' ? 'text-cyber-cyan' : 'text-slate-500'}`}>
+              <span className={`font-semibold ${apiStatus === 'online' ? 'text-cyber-cyan' : 'text-zinc-500'}`}>
                 {latency !== null ? `${latency} ms` : '— ms'}
               </span>
             </div>
@@ -141,20 +152,53 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header Panel */}
-        <header className="h-16 bg-cyber-dark border-b border-cyber-border flex items-center justify-between px-8 z-10">
+        <header className="h-14 bg-cyber-dark backdrop-blur-xl border-b border-cyber-border flex items-center justify-between px-8 z-10">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-cyber-cyan animate-ping"></div>
-            <span className="text-xs font-mono text-slate-400 uppercase tracking-widest">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyber-cyan animate-pulse"></div>
+            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
               Secured Node Channel 09
             </span>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-slate-950/60 border border-cyber-border">
-              <span className="text-xs font-mono text-slate-400">
+            {/* Animated Theme Toggle Button */}
+            <button
+              onClick={handleToggleTheme}
+              className="theme-toggle-btn h-8 w-8 rounded-lg bg-white/5 border border-cyber-border hover:bg-white/10 text-text-primary cursor-pointer flex items-center justify-center relative overflow-hidden"
+              style={{ padding: 0 }}
+              title={`Theme: ${theme.toUpperCase()} (Click to cycle)`}
+            >
+              <Sun 
+                size={14} 
+                className="absolute transition-all duration-500 text-amber-500" 
+                style={{
+                  opacity: theme === 'light' ? 1 : 0,
+                  transform: theme === 'light' ? 'rotate(0deg) scale(1)' : 'rotate(-90deg) scale(0)',
+                }}
+              />
+              <Moon 
+                size={14} 
+                className="absolute transition-all duration-500 text-cyber-cyan" 
+                style={{
+                  opacity: theme === 'dark' ? 1 : 0,
+                  transform: theme === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(90deg) scale(0)',
+                }}
+              />
+              <Laptop 
+                size={14} 
+                className="absolute transition-all duration-500 text-zinc-400" 
+                style={{
+                  opacity: theme === 'system' ? 1 : 0,
+                  transform: theme === 'system' ? 'scale(1)' : 'scale(0)',
+                }}
+              />
+            </button>
+
+            <div className="flex items-center gap-2.5 px-3 py-1 rounded-md bg-white/5 border border-cyber-border">
+              <span className="text-[10px] font-mono text-zinc-500">
                 Threat Level:
               </span>
-              <span className="text-xs font-mono font-bold text-cyber-rose uppercase tracking-wide">
+              <span className="text-[10px] font-mono font-bold text-cyber-rose uppercase tracking-wider">
                 Elevated
               </span>
             </div>
