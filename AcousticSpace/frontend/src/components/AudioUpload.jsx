@@ -134,17 +134,17 @@ export default function AudioUpload({
           </div>
         ) : (
           /* High-Fidelity Preview Card */
-          <div className={`border bg-slate-950/40 rounded-xl p-6 glow-shadow-green animate-fadeIn space-y-4 transition-all duration-300 ${
+          <div className={`border bg-slate-950/40 rounded-xl p-6 animate-fadeIn space-y-4 transition-all duration-300 ${
             uploading 
               ? 'border-cyber-cyan/30 glow-shadow-cyan' 
-              : 'border-cyber-green/20'
+              : 'border-cyber-green/20 glow-shadow-green'
           }`}>
             <div className="flex items-center gap-4">
               {/* Decorative Audio Icon Badge */}
-              <div className={`p-3 border rounded-lg shadow-[0_0_10px_rgba(16,185,129,0.1)] transition-all ${
+              <div className={`p-3 border rounded-lg transition-all ${
                 uploading 
-                  ? 'bg-cyber-cyan-glow text-cyber-cyan border-cyber-cyan/20 animate-pulse' 
-                  : 'bg-cyber-green-glow text-cyber-green border-cyber-green/20'
+                  ? 'bg-cyber-cyan-glow text-cyber-cyan border-cyber-cyan/20 shadow-[0_0_10px_rgba(6,182,212,0.1)] animate-pulse' 
+                  : 'bg-cyber-green-glow text-cyber-green border-cyber-green/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
               }`}>
                 {uploading ? (
                   <Loader2 size={28} className="animate-spin" />
