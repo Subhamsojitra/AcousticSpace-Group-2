@@ -53,3 +53,26 @@
   color: #ef4444;
   font-weight: 600;
 }
+.history-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.prediction-badge {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.prediction-badge.real {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.prediction-badge.fake {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}

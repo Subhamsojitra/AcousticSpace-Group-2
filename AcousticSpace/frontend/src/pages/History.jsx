@@ -78,22 +78,21 @@ const History = () => {
       <div className="history-list">
         {historyData.map((item) => (
           <div className="history-card" key={item.id}>
-            <h3>{item.fileName}</h3>
+            <div className="history-card-header">
+     <h3>🎵 {item.fileName}</h3>
+
+     <span
+     className={
+        item.prediction === "Real"
+         ? "prediction-badge real"
+         : "prediction-badge fake"
+     }
+      >
+    {item.prediction}
+  </span>
+</div>
 
             <div className="history-info">
-              <p>
-                <strong>Prediction:</strong>{" "}
-                <span
-                  className={
-                    item.prediction === "Real"
-                      ? "prediction-real"
-                      : "prediction-fake"
-                  }
-                >
-                  {item.prediction}
-                </span>
-              </p>
-
               <p>
                 <strong>Confidence:</strong> {item.confidence}
               </p>
