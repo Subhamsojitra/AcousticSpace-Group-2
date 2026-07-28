@@ -1,0 +1,55 @@
+.history-container {
+  padding: 40px;
+}
+
+.history-header {
+  margin-bottom: 30px;
+}
+
+.history-header h1 {
+  margin-bottom: 10px;
+  color: #ffffff;
+}
+
+.history-header p {
+  color: #9ca3af;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.history-card {
+  background: #1b2335;
+  border: 1px solid #2b3854;
+  border-radius: 12px;
+  padding: 20px;
+  transition: 0.3s ease;
+}
+
+.history-card:hover {
+  transform: translateY(-2px);
+  border-color: #3b82f6;
+}
+
+.history-card h3 {
+  margin-bottom: 15px;
+  color: #ffffff;
+}
+
+.history-info p {
+  margin: 8px 0;
+  color: #d7d7d7;
+}
+
+.prediction-real {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.prediction-fake {
+  color: #ef4444;
+  font-weight: 600;
+}
