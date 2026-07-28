@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 
 /**
  * Reusable InfoRow component for showing label-value pairs.
@@ -12,7 +12,7 @@ import React from 'react';
  * @param {string} [props.valueClassName=''] - Custom styling for value
  * @param {string} [props.className=''] - Custom styling for container
  */
-export default function InfoRow({
+function InfoRow({
   label,
   value,
   variant = 'row',
@@ -42,3 +42,6 @@ export default function InfoRow({
     </div>
   );
 }
+
+export default memo(InfoRow);
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, Suspense, lazy } from 'react';
 import { 
   FileAudio, 
   Shield,
@@ -13,9 +13,11 @@ import {
   formatConfidence,
   normalizePrediction
 } from '../services/apiHelpers';
-import ErrorAlert from '../components/ErrorAlert';
-import PredictionCard, { PredictionCardSkeleton } from '../components/PredictionCard';
-import LoadingOverlay from '../components/LoadingOverlay';
+import { PredictionCardSkeleton } from '../components/PredictionCard';
+
+const ErrorAlert = lazy(() => import('../components/ErrorAlert'));
+const PredictionCard = lazy(() => import('../components/PredictionCard'));
+const LoadingOverlay = lazy(() => import('../components/LoadingOverlay'));
 
 const THEME_CLASSES = {
   amber: {
@@ -58,7 +60,7 @@ const getScannerConfig = (status) => {
   return config[status] || config.offline;
 };
 
-export default function Dashboard({ apiStatus = 'checking' }) {
+function Dashboard({ apiStatus = 'checking' }) {
   const fileUpload = useFileUpload();
   const { file, error: pipelineError, handleFileChange, removeFile, setError: setPipelineError } = fileUpload;
 
@@ -67,12 +69,16 @@ export default function Dashboard({ apiStatus = 'checking' }) {
   const [pipelineMessage, setPipelineMessage] = useState('Awaiting Audio Upload');
   const [fileId, setFileId] = useState(null);
 
-  // Final analysis results
-  const [prediction, setPrediction] = useState(null);
-  const [confidence, setConfidence] = useState(null);
-  const [analysisInfo, setAnalysisInfo] = useState(null);
-  const [processingTime, setProcessingTime] = useState(null);
-  const [timestamp, setTimestamp] = useState(null);
+  // Consolidated analysis results state
+  const [pipelineResult, setPipelineResult] = useState({
+    prediction: null,
+    confidence: null,
+    analysisInfo: null,
+    processingTime: null,
+    timestamp: null,
+  });
+
+  const { prediction, confidence, analysisInfo, processingTime, timestamp } = pipelineResult;
 
   const isExecutingRef = useRef(false);
   const abortControllerRef = useRef(null);
@@ -83,26 +89,21 @@ export default function Dashboard({ apiStatus = 'checking' }) {
   }, [apiStatus]);
 
   // Helper functions for state cleanup and initialization
-  const clearPredictionState = () => {
-    setPrediction(null);
-    setConfidence(null);
-    setAnalysisInfo(null);
-    setProcessingTime(null);
-    setTimestamp(null);
-  };
+  const clearPredictionState = useCallback(() => {
+    setPipelineResult({
+      prediction: null,
+      confidence: null,
+      analysisInfo: null,
+      processingTime: null,
+      timestamp: null,
+    });
+  }, []);
 
-  const initializePipelineState = (message) => {
-    clearPredictionState();
-    setFileId(null);
-    setStage('idle');
-    setPipelineMessage(message);
-  };
-
-  const resetPipelineState = () => {
+  const resetPipelineState = useCallback(() => {
     setPipelineError(null);
     clearPredictionState();
     setFileId(null);
-  };
+  }, [setPipelineError, clearPredictionState]);
 
   // Reset pipeline state when the selected file changes or is removed
   useEffect(() => {
@@ -112,13 +113,20 @@ export default function Dashboard({ apiStatus = 'checking' }) {
     }
     isExecutingRef.current = false;
 
+    const initializePipelineState = (message) => {
+      clearPredictionState();
+      setFileId(null);
+      setStage('idle');
+      setPipelineMessage(message);
+    };
+
     setPipelineError(null); // Clear previous errors before new upload lifecycle starts
     if (!file) {
       initializePipelineState('Awaiting Audio Upload');
     } else {
       initializePipelineState('Payload loaded. Ready to run forensic analysis.');
     }
-  }, [file, setPipelineError]);
+  }, [file, setPipelineError, clearPredictionState]);
 
   // Handle component unmount cleanup
   useEffect(() => {
@@ -129,7 +137,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
     };
   }, []);
 
-  const runPipeline = async () => {
+  const runPipeline = useCallback(async () => {
     if (!file) return;
 
     // Prevent duplicate requests
@@ -171,12 +179,14 @@ export default function Dashboard({ apiStatus = 'checking' }) {
       const endTime = performance.now();
       const elapsedSecs = ((endTime - startTime) / 1000).toFixed(2);
 
-      // Store returned objects in Dashboard state
-      setPrediction(predictRes.prediction);
-      setConfidence(predictRes.confidence !== undefined && predictRes.confidence !== null ? predictRes.confidence : null);
-      setAnalysisInfo(predictRes.analysis || null);
-      setProcessingTime(elapsedSecs);
-      setTimestamp(new Date().toLocaleString());
+      // Store returned objects in Dashboard state atomically
+      setPipelineResult({
+        prediction: predictRes.prediction,
+        confidence: predictRes.confidence !== undefined && predictRes.confidence !== null ? predictRes.confidence : null,
+        analysisInfo: predictRes.analysis || null,
+        processingTime: elapsedSecs,
+        timestamp: new Date().toLocaleString(),
+      });
 
       setStage('completed');
       setPipelineMessage(`Analysis completed in ${elapsedSecs}s.`);
@@ -196,7 +206,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
         abortControllerRef.current = null;
       }
     }
-  };
+  }, [file, setPipelineError, resetPipelineState]);
 
   const isRunning = stage === 'uploading' || stage === 'extracting' || stage === 'predicting';
 
@@ -233,9 +243,11 @@ export default function Dashboard({ apiStatus = 'checking' }) {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn relative">
+    <div className="space-y-8 animate-fadeIn relative" aria-busy={isRunning}>
       {/* Loading Overlay */}
-      <LoadingOverlay stage={stage} error={pipelineError} />
+      <Suspense fallback={null}>
+        <LoadingOverlay stage={stage} error={pipelineError} />
+      </Suspense>
 
       {/* Page Header */}
       <div>
@@ -308,23 +320,27 @@ export default function Dashboard({ apiStatus = 'checking' }) {
         <div className="space-y-8">
           {/* Error Alert Display */}
           {pipelineError && (
-            <ErrorAlert 
-              message={pipelineError} 
-              onRetry={runPipeline} 
-              title="Pipeline Execution Error"
-            />
+            <Suspense fallback={null}>
+              <ErrorAlert 
+                message={pipelineError} 
+                onRetry={runPipeline} 
+                title="Pipeline Execution Error"
+              />
+            </Suspense>
           )}
 
           {stage === 'completed' && prediction && file ? (
             /* Premium Prediction Result Card displaying only returned fields */
-            <PredictionCard 
-              prediction={prediction}
-              confidence={confidence}
-              filename={file.name}
-              timestamp={timestamp}
-              processingTime={processingTime}
-              analysis={analysisInfo}
-            />
+            <Suspense fallback={<PredictionCardSkeleton />}>
+              <PredictionCard 
+                prediction={prediction}
+                confidence={confidence}
+                filename={file.name}
+                timestamp={timestamp}
+                processingTime={processingTime}
+                analysis={analysisInfo}
+              />
+            </Suspense>
           ) : isRunning ? (
             /* Skeleton Loading State inside the prediction/result container to prevent layout shift */
             <PredictionCardSkeleton />
@@ -353,7 +369,7 @@ export default function Dashboard({ apiStatus = 'checking' }) {
                     type="button"
                     onClick={runPipeline}
                     disabled={isRunning}
-                    className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 font-medium rounded-lg transition-all duration-200 text-xs tracking-normal ${
+                    className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 font-medium rounded-lg transition-all duration-200 text-xs tracking-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 focus-visible:ring-offset-2 focus-visible:ring-offset-cyber-black ${
                       isRunning
                         ? 'bg-white/5 text-text-secondary border border-cyber-border cursor-not-allowed shadow-none'
                         : 'bg-[#0071e3] text-white hover:bg-[#0077ed] cursor-pointer shadow-sm shadow-blue-500/10'
@@ -412,3 +428,6 @@ export default function Dashboard({ apiStatus = 'checking' }) {
     </div>
   );
 }
+
+export default React.memo(Dashboard);
+

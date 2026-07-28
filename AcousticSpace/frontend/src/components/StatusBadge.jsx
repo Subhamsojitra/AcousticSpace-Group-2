@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 
 /**
  * Reusable StatusBadge component.
@@ -8,7 +8,7 @@ import React from 'react';
  * @param {string} props.status - The status value (e.g. 'online', 'offline', 'Real', 'Fake', etc.)
  * @param {string} [props.customLabel] - Optional custom display label
  */
-export default function StatusBadge({ status, customLabel }) {
+function StatusBadge({ status, customLabel }) {
   const statusStr = status !== null && status !== undefined ? String(status).trim() : '';
   let text = customLabel || statusStr || '';
   let themeClass = '';
@@ -66,3 +66,6 @@ export default function StatusBadge({ status, customLabel }) {
     </span>
   );
 }
+
+export default memo(StatusBadge);
+

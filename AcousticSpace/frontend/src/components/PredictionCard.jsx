@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { ShieldCheck, ShieldAlert, AudioLines, Clock } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import InfoRow from './InfoRow';
@@ -14,7 +14,7 @@ import {
  * Renders a cybersecurity-themed prediction results dashboard card.
  * Displays only authentic parameters returned from the backend API PredictionResponse.
  */
-export default function PredictionCard({
+function PredictionCard({
   prediction,
   confidence,
   filename,
@@ -147,6 +147,9 @@ export default function PredictionCard({
     </div>
   );
 }
+
+export default memo(PredictionCard);
+
 
 /**
  * Lightweight PredictionCardSkeleton component for loading states.
