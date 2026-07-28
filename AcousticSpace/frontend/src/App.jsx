@@ -6,6 +6,7 @@ import Results from './pages/Results';
 import NotFound from './pages/NotFound';
 import LoadingState from './components/LoadingState';
 import ErrorState from "./components/ErrorState";
+import EmptyState from "./components/EmptyState";
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/results" element={<Results />} />
           <Route path="/error" element={<ErrorState />} />
           <Route path="*" element={<NotFound />} />
+          <Route path="/empty" element={<EmptyState />} />
         </Routes>
       </DashboardLayout>
     </Router>
