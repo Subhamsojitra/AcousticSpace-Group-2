@@ -53,61 +53,91 @@ const historyData = [
 ];
 
 const History = () => {
+  // =====================================================
+  // TEMPORARY FRONTEND STATE
+  // -----------------------------------------------------
+  // Used only to demonstrate the Empty State UI.
+  //
+  // TODO (Backend - Shubham):
+  // Replace this flag with:
+  //
+  // const showEmptyState = historyData.length === 0;
+  //
+  // after the /history API is integrated.
+  // =====================================================
+
+  const showEmptyState = false;;
+
   return (
     <div className="history-container">
       <div className="history-header">
         <h1>Analysis History</h1>
-
         <p>View all previously analyzed audio files.</p>
       </div>
 
-      {/* =====================================================
-          HISTORY RECORDS
+      {showEmptyState ? (
+        <div className="history-empty">
+          <div className="empty-icon">📂</div>
 
-          Frontend:
-          Displaying temporary dummy data.
+          <h2>No Analysis History</h2>
 
-          TODO (Backend - Shubham):
-          Replace "historyData" with the response received
-          from the /history API.
+          <p>
+            Your previous audio analyses will appear here once
+            you analyze an audio file.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* =====================================================
+              HISTORY RECORDS
 
-          Example:
-          historyData.map(...)
-      ===================================================== */}
+              Frontend:
+              Displaying temporary dummy data.
 
-      <div className="history-list">
-        {historyData.map((item) => (
-          <div className="history-card" key={item.id}>
-            <div className="history-card-header">
-     <h3>🎵 {item.fileName}</h3>
+              TODO (Backend - Shubham):
+              Replace "historyData" with the response received
+              from the /history API.
 
-     <span
-     className={
-        item.prediction === "Real"
-         ? "prediction-badge real"
-         : "prediction-badge fake"
-     }
-      >
-    {item.prediction}
-  </span>
-</div>
+              Example:
+              historyData.map(...)
+          ===================================================== */}
 
-            <div className="history-info">
-              <p>
-                <strong>Confidence:</strong> {item.confidence}
-              </p>
+          <div className="history-list">
+            {historyData.map((item) => (
+              <div className="history-card" key={item.id}>
+                <div className="history-card-header">
+                  <h3>🎵 {item.fileName}</h3>
 
-              <p>
-                <strong>Processing Time:</strong> {item.processingTime}
-              </p>
+                  <span
+                    className={
+                      item.prediction === "Real"
+                        ? "prediction-badge real"
+                        : "prediction-badge fake"
+                    }
+                  >
+                    {item.prediction}
+                  </span>
+                </div>
 
-              <p>
-                <strong>Timestamp:</strong> {item.timestamp}
-              </p>
-            </div>
+                <div className="history-info">
+                  <p>
+                    <strong>Confidence:</strong> {item.confidence}
+                  </p>
+
+                  <p>
+                    <strong>Processing Time:</strong>{" "}
+                    {item.processingTime}
+                  </p>
+
+                  <p>
+                    <strong>Timestamp:</strong> {item.timestamp}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   );
 };

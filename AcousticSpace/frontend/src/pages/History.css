@@ -76,3 +76,18 @@
   background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
 }
+.history-empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: #9ca3af;
+}
+
+.empty-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+}
+
+.history-empty h2 {
+  color: #ffffff;
+  margin-bottom: 10px;
+}
