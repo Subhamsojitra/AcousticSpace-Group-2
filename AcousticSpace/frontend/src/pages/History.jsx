@@ -66,7 +66,8 @@ const History = () => {
   // after the /history API is integrated.
   // =====================================================
 
-  const showEmptyState = false;;
+    const showLoadingState = false;
+    const showEmptyState = false;
 
   return (
     <div className="history-container">
@@ -75,7 +76,13 @@ const History = () => {
         <p>View all previously analyzed audio files.</p>
       </div>
 
-      {showEmptyState ? (
+      {showLoadingState ? (
+        <div className="history-loading">
+         <div className="loader"></div>
+         <h2>Loading Analysis History...</h2>
+         <p>Please wait while we fetch your previous analyses.</p>
+        </div>
+        ) : showEmptyState ? (
         <div className="history-empty">
           <div className="empty-icon">📂</div>
 

@@ -91,3 +91,29 @@
   color: #ffffff;
   margin-bottom: 10px;
 }
+.history-loading {
+  text-align: center;
+  padding: 80px 20px;
+  color: #9ca3af;
+}
+
+.loader {
+  width: 55px;
+  height: 55px;
+  margin: 0 auto 20px;
+  border: 5px solid rgba(255, 255, 255, 0.15);
+  border-top: 5px solid #00bfff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.history-loading h2 {
+  color: #ffffff;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
