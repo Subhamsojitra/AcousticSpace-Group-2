@@ -15,21 +15,22 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
+const NAV_ITEMS = [
+  { name: 'Dashboard', path: '/', icon: Activity },
+  { name: 'Analysis Logs', path: '/logs', icon: History, disabled: true },
+  { name: 'RIR Simulator', path: '/simulator', icon: Terminal, disabled: true },
+  { name: 'Model settings', path: '/settings', icon: Settings, disabled: true },
+];
+
+const THEMES = ['system', 'light', 'dark'];
+
 export default function DashboardLayout({ children, apiStatus = 'checking', latency = null }) {
   const location = useLocation();
   const { theme, setTheme } = useTheme();
 
-  const navItems = [
-    { name: 'Dashboard', path: '/', icon: Activity },
-    { name: 'Analysis Logs', path: '/logs', icon: History, disabled: true },
-    { name: 'RIR Simulator', path: '/simulator', icon: Terminal, disabled: true },
-    { name: 'Model settings', path: '/settings', icon: Settings, disabled: true },
-  ];
-
-  const themes = ['system', 'light', 'dark'];
   const handleToggleTheme = () => {
-    const nextIdx = (themes.indexOf(theme) + 1) % themes.length;
-    setTheme(themes[nextIdx]);
+    const nextIdx = (THEMES.indexOf(theme) + 1) % THEMES.length;
+    setTheme(THEMES[nextIdx]);
   };
 
   return (
@@ -53,7 +54,7 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
 
         {/* Sidebar Nav Links */}
         <nav className="flex-1 px-4 py-6 space-y-1">
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             
@@ -77,7 +78,7 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
               <Link
                 key={item.name}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-2.5 text-xs font-medium rounded-lg transition-all duration-200 group ${
+                className={`flex items-center gap-3 px-4 py-2.5 text-xs font-medium rounded-lg transition-all duration-200 group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyber-cyan/50 focus-visible:bg-white/5 ${
                   isActive 
                     ? 'bg-white/5 text-text-primary border border-cyber-border shadow-sm' 
                     : 'text-zinc-400 hover:text-text-primary hover:bg-white/[0.02] border border-transparent'
@@ -164,9 +165,10 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
             {/* Animated Theme Toggle Button */}
             <button
               onClick={handleToggleTheme}
-              className="theme-toggle-btn h-8 w-8 rounded-lg bg-white/5 border border-cyber-border hover:bg-white/10 text-text-primary cursor-pointer flex items-center justify-center relative overflow-hidden"
+              className="theme-toggle-btn h-8 w-8 rounded-lg bg-white/5 border border-cyber-border hover:bg-white/10 text-text-primary cursor-pointer flex items-center justify-center relative overflow-hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyber-cyan/50"
               style={{ padding: 0 }}
               title={`Theme: ${theme.toUpperCase()} (Click to cycle)`}
+              aria-label={`Switch theme (current: ${theme})`}
             >
               <Sun 
                 size={14} 
@@ -213,3 +215,4 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
     </div>
   );
 }
+

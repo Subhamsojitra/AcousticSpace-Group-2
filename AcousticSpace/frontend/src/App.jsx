@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
-import NotFound from './pages/NotFound';
 import { API_BASE_URL } from './config/apiConfig';
 import { ThemeProvider } from './context/ThemeContext';
+
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 function App() {
   const [apiStatus, setApiStatus] = useState('checking'); // 'online' | 'offline' | 'checking'
@@ -43,10 +44,16 @@ function App() {
     <ThemeProvider>
       <Router>
         <DashboardLayout apiStatus={apiStatus} latency={latency}>
-          <Routes>
-            <Route path="/" element={<Dashboard apiStatus={apiStatus} latency={latency} />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-full p-8 text-zinc-500 font-mono text-xs">
+              Loading security console...
+            </div>
+          }>
+            <Routes>
+              <Route path="/" element={<Dashboard apiStatus={apiStatus} />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </DashboardLayout>
       </Router>
     </ThemeProvider>
@@ -54,4 +61,5 @@ function App() {
 }
 
 export default App;
+
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Activity, Info, BarChart2 } from 'lucide-react';
 import { formatFileSize } from '../utils/fileValidation';
 
@@ -24,7 +24,7 @@ const generateFallbackWaveform = (name) => {
   return points;
 };
 
-export default function WaveformViewer({
+function WaveformViewer({
   file,
   externalWaveformData = null,
   externalLoading = false,
@@ -135,6 +135,31 @@ export default function WaveformViewer({
     };
   }, [file, externalWaveformData]);
 
+  // Memoize waveform rectangles to prevent mapping amplitudes on every render pass
+  const renderedWaveformBars = useMemo(() => {
+    return amplitudes.map((amplitude, i) => {
+      const barWidth = 4.5;
+      const barGap = 1.5;
+      const x = i * (barWidth + barGap);
+      const height = amplitude * 85;
+      const y = 50 - height / 2;
+
+      return (
+        <rect
+          key={i}
+          x={x}
+          y={y}
+          width={barWidth}
+          height={height}
+          rx={2}
+          className="fill-[url(#waveform-gradient)]"
+        >
+          <title>{`Amplitude Sample #${i + 1}: ${(amplitude * 100).toFixed(0)}%`}</title>
+        </rect>
+      );
+    });
+  }, [amplitudes]);
+
   return (
     <div className="bg-zinc-950/45 backdrop-blur-xl border border-white/5 rounded-2xl shadow-lg overflow-hidden transition-all duration-300">
       {/* Header Panel */}
@@ -243,27 +268,7 @@ export default function WaveformViewer({
                     <stop offset="100%" stopColor="#0a84ff" stopOpacity="0.85" />
                   </linearGradient>
                 </defs>
-                {amplitudes.map((amplitude, i) => {
-                  const barWidth = 4.5;
-                  const barGap = 1.5;
-                  const x = i * (barWidth + barGap);
-                  const height = amplitude * 85;
-                  const y = 50 - height / 2;
-
-                  return (
-                    <rect
-                      key={i}
-                      x={x}
-                      y={y}
-                      width={barWidth}
-                      height={height}
-                      rx={2}
-                      className="fill-[url(#waveform-gradient)]"
-                    >
-                      <title>{`Amplitude Sample #${i + 1}: ${(amplitude * 100).toFixed(0)}%`}</title>
-                    </rect>
-                  );
-                })}
+                {renderedWaveformBars}
               </svg>
             </div>
           )}
@@ -288,3 +293,6 @@ export default function WaveformViewer({
     </div>
   );
 }
+
+export default React.memo(WaveformViewer);
+

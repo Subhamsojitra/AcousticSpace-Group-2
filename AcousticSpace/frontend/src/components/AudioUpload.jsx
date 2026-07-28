@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { UploadCloud, FileAudio, Trash2, Loader2 } from 'lucide-react';
 import { formatFileSize } from '../utils/fileValidation';
 
-export default function AudioUpload({
+function AudioUpload({
   file = null,
   handleFileChange = () => {},
   removeFile = () => {},
@@ -95,14 +95,23 @@ export default function AudioUpload({
 
         {/* Conditionally render Empty State (Dropzone) vs. Preview Card */}
         {!file ? (
-          /* Empty / Drag & Drop State */
+          /* Empty / Drag & Drop State with complete keyboard accessibility */
           <div
             onDragOver={handleDragOver}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={handleBrowseClick}
-            className={`border border-dashed rounded-2xl py-8 px-6 flex flex-col items-center justify-center text-center transition-all duration-300 ${
+            onKeyDown={(e) => {
+              if (!uploading && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                handleBrowseClick();
+              }
+            }}
+            role="button"
+            tabIndex={uploading ? -1 : 0}
+            aria-label="Upload audio file"
+            className={`border border-dashed rounded-2xl py-8 px-6 flex flex-col items-center justify-center text-center transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 focus-visible:ring-offset-2 focus-visible:ring-offset-cyber-black ${
               uploading 
                 ? 'cursor-not-allowed border-cyber-border bg-white/[0.01] opacity-60'
                 : isDragging
@@ -183,7 +192,7 @@ export default function AudioUpload({
                 type="button"
                 onClick={handleRemoveClick}
                 disabled={uploading}
-                className={`p-2 px-3 rounded-lg border flex items-center gap-1.5 font-mono text-[10px] font-semibold shrink-0 transition-all duration-200 ${
+                className={`p-2 px-3 rounded-lg border flex items-center gap-1.5 font-mono text-[10px] font-semibold shrink-0 transition-all duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyber-rose/50 ${
                   uploading
                     ? 'border-cyber-border bg-white/5 text-text-secondary cursor-not-allowed opacity-40 shadow-none'
                     : 'border-cyber-border bg-white/5 text-text-primary hover:bg-white/10 cursor-pointer shadow-none'
@@ -216,3 +225,6 @@ export default function AudioUpload({
     </div>
   );
 }
+
+export default React.memo(AudioUpload);
+
