@@ -117,3 +117,44 @@
     transform: rotate(360deg);
   }
 }
+.history-error {
+  text-align: center;
+  padding: 80px 20px;
+  color: #9ca3af;
+}
+
+.error-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+}
+
+.history-error h2 {
+  color: #ffffff;
+  margin-bottom: 10px;
+}
+
+.retry-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin: 25px auto 0;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 8px;
+  background: #00bfff;
+  color: white;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+.history-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 80px 20px;
+  color: #9ca3af;
+}

@@ -67,6 +67,7 @@ const History = () => {
   // =====================================================
 
     const showLoadingState = false;
+    const showErrorState = false;
     const showEmptyState = false;
 
   return (
@@ -76,7 +77,23 @@ const History = () => {
         <p>View all previously analyzed audio files.</p>
       </div>
 
-      {showLoadingState ? (
+        {showLoadingState ? (
+         <div className="history-loading">
+                <div className="loader"></div>
+                <h2>Loading Analysis History...</h2>
+                <p>Please wait while we fetch your previous analyses.</p>
+        </div>
+        ) : showErrorState ? (
+        <div className="history-error">
+            <div className="error-icon">⚠️</div>
+            <h2>Unable to Load History</h2>
+            <p>Something went wrong while loading your analysis history.</p>
+
+            <button className="retry-button">
+            Try Again
+            </button>
+        </div>
+) : showEmptyState ? (
         <div className="history-loading">
          <div className="loader"></div>
          <h2>Loading Analysis History...</h2>
