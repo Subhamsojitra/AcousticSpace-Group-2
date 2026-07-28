@@ -46,3 +46,19 @@
     transform: rotate(360deg);
   }
 }
+.loading-btn {
+  margin-top: 30px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 8px;
+  background: #00bfff;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.loading-btn:hover {
+  background: #0099cc;
+}
