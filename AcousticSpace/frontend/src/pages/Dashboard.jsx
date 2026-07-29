@@ -6,7 +6,10 @@ import {
 } from 'lucide-react';
 import AudioUpload from '../components/AudioUpload';
 import WaveformViewer from '../components/WaveformViewer';
+import TimelineProgress from '../components/TimelineProgress';
+import AudioMetadataPanel from '../components/AudioMetadataPanel';
 import { useFileUpload } from '../hooks/useFileUpload';
+import { useToast } from '../context/ToastContext';
 import { uploadAudio, analyzeAudio, predictAudio } from '../services/api';
 import { 
   getErrorMessage,
@@ -63,6 +66,7 @@ const getScannerConfig = (status) => {
 function Dashboard({ apiStatus = 'checking' }) {
   const fileUpload = useFileUpload();
   const { file, error: pipelineError, handleFileChange, removeFile, setError: setPipelineError } = fileUpload;
+  const { addToast } = useToast();
 
   // Pipeline execution stages: 'idle' | 'uploading' | 'extracting' | 'predicting' | 'completed' | 'failed'
   const [stage, setStage] = useState('idle');
@@ -82,11 +86,25 @@ function Dashboard({ apiStatus = 'checking' }) {
 
   const isExecutingRef = useRef(false);
   const abortControllerRef = useRef(null);
+  
+  // Scrolling target nodes
+  const timelineRef = useRef(null);
+  const resultsRef = useRef(null);
 
   const apiStatusRef = useRef(apiStatus);
   useEffect(() => {
     apiStatusRef.current = apiStatus;
   }, [apiStatus]);
+
+  // Scroll to results when scan compiles successfully
+  useEffect(() => {
+    if (stage === 'completed' && resultsRef.current) {
+      const scrollTimer = setTimeout(() => {
+        resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+      return () => clearTimeout(scrollTimer);
+    }
+  }, [stage]);
 
   // Helper functions for state cleanup and initialization
   const clearPredictionState = useCallback(() => {
@@ -146,6 +164,13 @@ function Dashboard({ apiStatus = 'checking' }) {
     }
     isExecutingRef.current = true;
 
+    // Smooth scroll to timeline card when analysis starts
+    setTimeout(() => {
+      if (timelineRef.current) {
+        timelineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+
     // Abort in-flight request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -162,19 +187,23 @@ function Dashboard({ apiStatus = 'checking' }) {
       // 1. Upload stage
       setStage('uploading');
       setPipelineMessage('Uploading audio payload to security gateway...');
+      addToast('Forensic analysis pipeline initialized', 'info');
       const uploadResult = await uploadAudio(file, signal);
       const fileIdVal = uploadResult.file_path || uploadResult.file_name || uploadResult.file_id;
       setFileId(fileIdVal);
+      addToast('Audio upload complete. Decoding waveform features...', 'success');
 
       // 2. Extraction stage
       setStage('extracting');
       setPipelineMessage('Decoding spatial indicators...');
       await analyzeAudio(fileIdVal, signal);
+      addToast('Feature extraction complete. Running classification model...', 'info');
 
       // 3. Predicting stage
       setStage('predicting');
       setPipelineMessage('Running deepfake classification weights...');
       const predictRes = await predictAudio(fileIdVal, signal);
+      addToast('Classification complete. Verdict compiled successfully.', 'success');
 
       const endTime = performance.now();
       const elapsedSecs = ((endTime - startTime) / 1000).toFixed(2);
@@ -197,6 +226,7 @@ function Dashboard({ apiStatus = 'checking' }) {
       console.error('Scan pipeline failure:', err);
       setStage('failed');
       setPipelineMessage('Scan pipeline failed.');
+      addToast('Scan pipeline execution failed', 'error');
       
       const readableMessage = getErrorMessage(err, apiStatusRef.current);
       setPipelineError(readableMessage);
@@ -206,7 +236,7 @@ function Dashboard({ apiStatus = 'checking' }) {
         abortControllerRef.current = null;
       }
     }
-  }, [file, setPipelineError, resetPipelineState]);
+  }, [file, setPipelineError, resetPipelineState, addToast]);
 
   const isRunning = stage === 'uploading' || stage === 'extracting' || stage === 'predicting';
 
@@ -224,13 +254,13 @@ function Dashboard({ apiStatus = 'checking' }) {
   const scannerConfig = getScannerConfig(apiStatus);
 
   const renderIntegrityScanCard = ({ isReady, content, footer }) => {
-    const shieldClass = isReady ? 'text-[#0a84ff]' : 'text-text-secondary';
+    const shieldClass = isReady ? 'text-cyber-cyan' : 'text-text-secondary';
     const titleClass = isReady ? 'text-text-primary' : 'text-text-secondary';
     return (
-      <div className="bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl shadow-sm h-full flex flex-col justify-between p-6 min-h-[400px] metric-card">
-        <div className={isReady ? 'space-y-4' : 'space-y-6'}>
-          <div className="flex items-center gap-2 pb-4 border-b border-cyber-border">
-            <Shield className={shieldClass} size={16} />
+      <div className="bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl shadow-md h-full flex flex-col justify-between p-6 min-h-[420px] transition-all duration-300 animate-fadeIn delay-150">
+        <div className={isReady ? 'space-y-5' : 'space-y-6'}>
+          <div className="flex items-center gap-2.5 pb-4 border-b border-cyber-border/40">
+            <Shield className={shieldClass} size={15} />
             <h2 className={`font-display font-semibold text-xs tracking-wide uppercase ${titleClass}`}>
               Acoustic Integrity Scan
             </h2>
@@ -243,24 +273,24 @@ function Dashboard({ apiStatus = 'checking' }) {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn relative" aria-busy={isRunning}>
+    <div className="space-y-8 animate-fadeIn relative pb-4" aria-busy={isRunning}>
       {/* Loading Overlay */}
       <Suspense fallback={null}>
         <LoadingOverlay stage={stage} error={pipelineError} />
       </Suspense>
-
+ 
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
+      <div className="animate-fadeIn delay-75">
+        <h1 className="text-3xl font-bold tracking-tight text-text-primary">
           Acoustic Analysis Console
         </h1>
-        <p className="text-xs text-text-secondary mt-1.5 font-normal">
+        <p className="text-xs text-text-secondary mt-2 font-normal tracking-wide leading-relaxed max-w-3xl">
           AcousticSpace: De-noises room reflections (RIR) and analyzes speech cadence boundaries.
         </p>
       </div>
 
       {/* Metric Cards Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'Pipeline State', value: pipelineStatus.value, change: pipelineMessage, theme: pipelineStatus.theme },
           { 
@@ -273,22 +303,23 @@ function Dashboard({ apiStatus = 'checking' }) {
           { label: 'Scanner Status', value: scannerConfig.value, change: scannerConfig.change, theme: scannerConfig.theme }
         ].map((m, idx) => {
           const themeConfig = THEME_CLASSES[m.theme] || THEME_CLASSES.gray;
+          const delayClass = idx === 0 ? 'delay-75' : idx === 1 ? 'delay-100' : idx === 2 ? 'delay-150' : 'delay-200';
           return (
             <div 
               key={idx} 
-              className={`p-5 bg-cyber-dark backdrop-blur-md rounded-2xl border min-h-[120px] flex flex-col justify-between metric-card ${themeConfig.border}`}
+              className={`p-5 bg-cyber-dark backdrop-blur-xl rounded-2xl border min-h-[120px] flex flex-col justify-between hover-lift shadow-sm animate-fadeIn ${delayClass} ${themeConfig.border}`}
             >
               <div>
-                <span className="text-[9px] font-mono text-text-secondary uppercase tracking-wider block">
+                <span className="text-[10px] font-mono font-semibold text-text-secondary uppercase tracking-wider block">
                   {m.label}
                 </span>
-                <span className="text-lg font-semibold tracking-tight text-text-primary mt-1 block">
+                <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 block">
                   {m.value}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 mt-3">
-                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${themeConfig.dot}`}></div>
-                <span className="text-[10px] text-text-secondary truncate font-normal" title={m.change}>
+              <div className="flex items-center gap-2 mt-4 pt-2.5 border-t border-cyber-border/40">
+                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${themeConfig.dot} animate-pulse`}></div>
+                <span className="text-[10px] text-text-secondary truncate font-normal leading-none" title={m.change}>
                   {m.change}
                 </span>
               </div>
@@ -310,6 +341,8 @@ function Dashboard({ apiStatus = 'checking' }) {
             removeFile={removeFile}
             uploading={isRunning}
             fileId={fileId}
+            onAnalyze={runPipeline}
+            stage={stage}
           />
 
           {/* Dynamic Waveform Viewer */}
@@ -317,7 +350,7 @@ function Dashboard({ apiStatus = 'checking' }) {
         </div>
 
         {/* Right Column: Acoustic Integrity Report */}
-        <div className="space-y-8">
+        <div ref={timelineRef} className="space-y-6 animate-fadeIn delay-100">
           {/* Error Alert Display */}
           {pipelineError && (
             <Suspense fallback={null}>
@@ -331,56 +364,56 @@ function Dashboard({ apiStatus = 'checking' }) {
 
           {stage === 'completed' && prediction && file ? (
             /* Premium Prediction Result Card displaying only returned fields */
-            <Suspense fallback={<PredictionCardSkeleton />}>
-              <PredictionCard 
-                prediction={prediction}
-                confidence={confidence}
-                filename={file.name}
-                timestamp={timestamp}
-                processingTime={processingTime}
-                analysis={analysisInfo}
-              />
-            </Suspense>
+            <div ref={resultsRef} className="animate-fadeIn">
+              <Suspense fallback={<PredictionCardSkeleton />}>
+                <PredictionCard 
+                  prediction={prediction}
+                  confidence={confidence}
+                  filename={file.name}
+                  timestamp={timestamp}
+                  processingTime={processingTime}
+                  analysis={analysisInfo}
+                />
+              </Suspense>
+            </div>
           ) : isRunning ? (
-            /* Skeleton Loading State inside the prediction/result container to prevent layout shift */
-            <PredictionCardSkeleton />
+            /* Detailed Forensic Progress Timeline during active execution */
+            renderIntegrityScanCard({
+              isReady: true,
+              content: (
+                <TimelineProgress stage={stage} error={pipelineError} />
+              ),
+              footer: (
+                <div className="pt-4 border-t border-cyber-border/40 text-[9px] text-center text-text-secondary tracking-widest font-mono uppercase">
+                  ANALYSIS RUNNING...
+                </div>
+              )
+            })
           ) : file ? (
             /* Ready to Scan State */
             renderIntegrityScanCard({
               isReady: true,
               content: (
-                <div className="p-4 bg-white/[0.01] border border-cyber-border rounded-xl flex flex-col items-center justify-center text-center space-y-3 py-8">
-                  <div className="p-3 bg-white/5 border border-cyber-border text-text-primary rounded-full">
-                    <FileAudio size={24} className="text-text-secondary" />
+                <div className="space-y-5">
+                  <div className="p-5 bg-white/[0.01] border border-cyber-border/40 rounded-xl flex flex-col items-center justify-center text-center space-y-4 py-6">
+                    <div className="p-3 bg-white/5 border border-cyber-border/60 text-text-primary rounded-full shadow-sm animate-pulse">
+                      <FileAudio size={24} className="text-cyber-cyan" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider font-mono">
+                         Acoustic Payload Loaded
+                      </h3>
+                      <p className="text-[10px] text-text-secondary font-normal mt-1.5 max-w-xs leading-normal">
+                        File details verified. Local audio waveform decoded successfully.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider font-mono">
-                       Acoustic Payload Loaded
-                    </h3>
-                    <p className="text-[10px] text-text-secondary font-normal mt-1 max-w-xs leading-normal">
-                      File details verified. Local audio waveform decoded successfully.
-                    </p>
-                  </div>
+                  <TimelineProgress stage={stage} error={pipelineError} />
                 </div>
               ),
               footer: (
-                <div className="space-y-4 pt-6 border-t border-cyber-border">
-                  <button
-                    type="button"
-                    onClick={runPipeline}
-                    disabled={isRunning}
-                    className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 font-medium rounded-lg transition-all duration-200 text-xs tracking-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 focus-visible:ring-offset-2 focus-visible:ring-offset-cyber-black ${
-                      isRunning
-                        ? 'bg-white/5 text-text-secondary border border-cyber-border cursor-not-allowed shadow-none'
-                        : 'bg-[#0071e3] text-white hover:bg-[#0077ed] cursor-pointer shadow-sm shadow-blue-500/10'
-                    }`}
-                  >
-                    <Play size={12} fill="currentColor" />
-                    <span>Analyze Audio</span>
-                  </button>
-                  <p className="text-[9px] text-center text-text-secondary font-mono leading-relaxed">
-                    Target signal will be checked against room reflections (RT60) & pause cadences.
-                  </p>
+                <div className="pt-4 border-t border-cyber-border/40 text-[9px] text-center text-text-secondary tracking-widest font-mono uppercase">
+                  AWAITING SCAN TRIGGER
                 </div>
               ),
             })
@@ -389,39 +422,27 @@ function Dashboard({ apiStatus = 'checking' }) {
             renderIntegrityScanCard({
               isReady: false,
               content: (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {/* Status Indicator */}
-                  <div className="flex items-center gap-2 px-2.5 py-1 bg-white/5 border border-cyber-border rounded-md w-fit">
-                    <div className="h-1.5 w-1.5 rounded-full bg-zinc-500"></div>
+                  <div className="flex items-center gap-2 px-2.5 py-1 bg-white/5 border border-cyber-border/40 rounded-md w-fit">
+                    <div className="h-1.5 w-1.5 rounded-full bg-zinc-500 animate-pulse"></div>
                     <span className="text-[9px] text-text-secondary uppercase tracking-wider font-semibold font-mono">
                       Awaiting Analysis
                     </span>
                   </div>
- 
-                  {/* Flow Steps Checklist */}
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex items-center gap-3 p-3 bg-white/[0.01] border border-cyber-border rounded-xl text-text-secondary">
-                      <span className="h-4.5 w-4.5 rounded-full bg-white/5 border border-cyber-border flex items-center justify-center text-[10px] text-text-secondary font-bold shrink-0">1</span>
-                      <span className="font-medium text-text-primary">Upload an audio sample</span>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-white/[0.01] border border-cyber-border rounded-xl text-text-secondary">
-                      <span className="h-4.5 w-4.5 rounded-full bg-white/[0.02] border border-cyber-border flex items-center justify-center text-[10px] text-text-secondary font-bold shrink-0">2</span>
-                      <span className="font-medium text-text-primary">Run forensic analysis</span>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-white/[0.01] border border-cyber-border rounded-xl text-text-secondary">
-                      <span className="h-4.5 w-4.5 rounded-full bg-white/[0.02] border border-cyber-border flex items-center justify-center text-[10px] text-text-secondary font-bold shrink-0">3</span>
-                      <span className="font-medium text-text-primary">View prediction report</span>
-                    </div>
-                  </div>
+                  <TimelineProgress stage="idle" />
                 </div>
               ),
               footer: (
-                <div className="pt-4 border-t border-cyber-border text-[9px] text-center text-text-secondary tracking-widest font-mono">
+                <div className="pt-4 border-t border-cyber-border/40 text-[9px] text-center text-text-secondary tracking-widest font-mono uppercase">
                   SECURED NODE CHANNEL
                 </div>
               ),
             })
           )}
+
+          {/* Technical Metadata Panel */}
+          <AudioMetadataPanel file={file} />
         </div>
 
       </div>

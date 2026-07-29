@@ -1,48 +1,47 @@
 import React from 'react';
-import { ShieldAlert } from 'lucide-react';
-import AnalysisProgress from './AnalysisProgress';
+import { ShieldAlert, Loader2 } from 'lucide-react';
 
-/**
- * Reusable LoadingOverlay component.
- * Blocks dashboard user interaction with a high-fidelity glassmorphism overlay.
- * Renders the step-by-step progress visual indicator.
- * 
- * @param {Object} props
- * @param {string} props.stage - The current stage ('idle' | 'uploading' | 'extracting' | 'predicting' | 'completed' | 'failed')
- * @param {boolean|string} [props.error] - Current error status of the running pipeline
- */
+const STAGE_LABELS = {
+  uploading: 'Uploading Audio Payload...',
+  extracting: 'Decoding Spatial Indicators...',
+  predicting: 'Evaluating Neural AST Weights...',
+};
+
 export default function LoadingOverlay({ stage, error = null }) {
   if (!stage || stage === 'completed' || stage === 'idle' || stage === 'failed') return null;
 
+  const currentLabel = STAGE_LABELS[stage] || 'Processing Audio Sample...';
+
   return (
-    <div className="fixed inset-0 bg-black/45 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300 animate-fadeIn">
-      <div className="w-full max-w-md bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl overflow-hidden shadow-2xl transition-all duration-300">
+    <div className="fixed inset-0 bg-black/15 backdrop-blur-[5px] flex items-center justify-center z-50 p-4 transition-all duration-300 animate-fadeIn">
+      <div className="w-full max-w-[280px] bg-cyber-dark backdrop-blur-xl border border-cyber-border/80 rounded-2xl overflow-hidden shadow-2xl p-5 text-center flex flex-col items-center justify-center space-y-4">
         
-        {/* Header */}
-        <div className="relative border-b border-cyber-border p-5 flex items-center gap-3">
-          <div className="scanner-line"></div>
-          
-          <div className="p-2 rounded-lg bg-white/5 border border-cyber-border text-text-primary animate-pulse">
-            <ShieldAlert size={18} />
-          </div>
-          <div>
-            <h3 className="font-display font-bold text-xs text-text-primary uppercase tracking-widest">
-              Forensic Scan In Progress
-            </h3>
-            <p className="text-[9px] text-text-secondary font-mono uppercase tracking-wider mt-0.5 animate-pulse">
-              Running De-noising & Synthesis Classifier
-            </p>
-          </div>
+        {/* Shield Indicator */}
+        <div className="p-3.5 rounded-full bg-cyber-cyan/5 border border-cyber-cyan/35 text-cyber-cyan shadow-sm relative">
+          <ShieldAlert size={20} className="animate-pulse" />
+          <span className="absolute inset-0 rounded-full border border-cyber-cyan/35 animate-ping opacity-45"></span>
         </div>
 
-        {/* Body content */}
-        <div className="p-6 space-y-6">
-          <AnalysisProgress currentStage={stage} error={error} />
-          
-          <div className="p-3 bg-white/[0.01] border border-cyber-border rounded-xl text-text-secondary font-mono text-[9px] leading-relaxed text-center">
-            Dashboard upload gateway & controls are locked during execution cycle.
-          </div>
+        <div>
+          <h3 className="font-display font-bold text-xs text-text-primary uppercase tracking-wider">
+            Forensic Scan
+          </h3>
+          <p className="text-[9px] text-text-secondary font-mono uppercase tracking-widest mt-0.5 animate-pulse">
+            Active Inference
+          </p>
         </div>
+
+        {/* Current Stage Indicator */}
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-cyber-border/40 rounded-xl w-full justify-center">
+          <Loader2 size={12} className="text-cyber-cyan animate-spin" />
+          <span className="text-[10px] font-mono text-text-primary font-medium truncate">
+            {currentLabel}
+          </span>
+        </div>
+
+        <p className="text-[8px] text-text-secondary font-mono uppercase tracking-widest leading-none">
+          Portal Gateway Locked
+        </p>
       </div>
     </div>
   );
