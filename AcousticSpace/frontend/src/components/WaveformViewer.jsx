@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Activity, Info, BarChart2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Activity, Info, BarChart2, Play, Pause, ZoomIn, ZoomOut } from 'lucide-react';
 import { formatFileSize } from '../utils/fileValidation';
 
 /**
@@ -34,9 +34,44 @@ function WaveformViewer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Professional Interactive Waveform States
+  const [duration, setDuration] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [hoverTime, setHoverTime] = useState(null);
+  const [hoverX, setHoverX] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [startX, setStartX] = useState(0);
+  
+  const audioRef = React.useRef(null);
+
   // Derived state to support either internal processing or external backend data
   const isLoading = externalLoading || loading;
   const hasError = externalError || error;
+
+  useEffect(() => {
+    if (!file) {
+      setAudioUrl(null);
+      setCurrentTime(0);
+      setIsPlaying(false);
+      setDuration(0);
+      setZoom(1);
+      setPanX(0);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setAudioUrl(url);
+    setCurrentTime(0);
+    setIsPlaying(false);
+    setZoom(1);
+    setPanX(0);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
 
   useEffect(() => {
     if (externalWaveformData) {
@@ -102,6 +137,7 @@ function WaveformViewer({
 
           if (active) {
             setAmplitudes(normalized);
+            setDuration(audioBuffer.duration);
             setLoading(false);
           }
           audioCtx.close();
@@ -115,6 +151,7 @@ function WaveformViewer({
           if (active) {
             const fallback = generateFallbackWaveform(file.name);
             setAmplitudes(fallback);
+            setDuration(12.4);
             setLoading(false);
           }
         }
@@ -123,6 +160,7 @@ function WaveformViewer({
         if (active) {
           const fallback = generateFallbackWaveform(file.name);
           setAmplitudes(fallback);
+          setDuration(12.4);
           setLoading(false);
         }
       }
@@ -160,30 +198,119 @@ function WaveformViewer({
     });
   }, [amplitudes]);
 
+  const handleMouseDown = (e) => {
+    if (zoom <= 1) return;
+    setIsPanning(true);
+    setStartX(e.clientX - panX);
+  };
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relativeX = (e.clientX - rect.left) / rect.width;
+    
+    if (duration > 0) {
+      const visibleWidth = 500 / zoom;
+      const relativeXInSvg = panX + relativeX * visibleWidth;
+      const hoverSeconds = (relativeXInSvg / 500) * duration;
+      if (hoverSeconds >= 0 && hoverSeconds <= duration) {
+        setHoverTime(hoverSeconds);
+        setHoverX(e.clientX - rect.left);
+      } else {
+        setHoverTime(null);
+      }
+    }
+
+    if (!isPanning) return;
+    const newPanX = startX - e.clientX;
+    const maxPanX = 500 - 500 / zoom;
+    setPanX(Math.max(0, Math.min(maxPanX, newPanX)));
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsPanning(false);
+    setHoverTime(null);
+  };
+
+  const handlePlayPause = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().catch(err => console.error("Playback failed", err));
+      setIsPlaying(true);
+    }
+  };
+
   return (
-    <div className="bg-zinc-950/45 backdrop-blur-xl border border-white/5 rounded-2xl shadow-lg overflow-hidden transition-all duration-300">
+    <div className="bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover-lift animate-fadeIn delay-100">
+      {/* Playback Reference */}
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          onTimeUpdate={() => setCurrentTime(audioRef.current.currentTime)}
+          onEnded={() => {
+            setIsPlaying(false);
+            setCurrentTime(0);
+          }}
+          className="hidden"
+        />
+      )}
+
       {/* Header Panel */}
-      <div className="p-6 border-b border-white/5 flex items-center justify-between">
+      <div className="p-6 border-b border-cyber-border/40 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity className="text-zinc-400" size={16} />
-          <h2 className="font-display font-semibold text-xs tracking-wide uppercase text-zinc-300">
+          <Activity className="text-text-secondary" size={15} />
+          <h2 className="font-display font-semibold text-xs tracking-wide uppercase text-text-primary">
             Spectral Waveform Analyzer
           </h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {file && !isLoading && (
+            <div className="flex items-center gap-1.5 p-0.5 rounded-lg bg-white/5 border border-cyber-border/40">
+              <button
+                onClick={() => {
+                  const nextZoom = Math.min(5, zoom + 0.5);
+                  setZoom(nextZoom);
+                }}
+                className="p-1 hover:bg-white/5 rounded text-text-secondary hover:text-text-primary cursor-pointer active:scale-95 transition-all"
+                title="Zoom In"
+              >
+                <ZoomIn size={12} />
+              </button>
+              <span className="text-[9px] font-mono text-text-secondary px-0.5 select-none">{zoom.toFixed(1)}x</span>
+              <button
+                onClick={() => {
+                  const nextZoom = Math.max(1, zoom - 0.5);
+                  setZoom(nextZoom);
+                  if (nextZoom === 1) setPanX(0);
+                }}
+                className="p-1 hover:bg-white/5 rounded text-text-secondary hover:text-text-primary cursor-pointer active:scale-95 transition-all"
+                title="Zoom Out"
+              >
+                <ZoomOut size={12} />
+              </button>
+            </div>
+          )}
+          
           {!file && !externalWaveformData ? (
-            <span className="flex items-center gap-1.5 text-[9px] font-mono text-zinc-500">
-              <span className="w-1 h-1 rounded-full bg-zinc-600"></span>
+            <span className="flex items-center gap-1.5 text-[9px] font-mono text-text-secondary font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 animate-pulse"></span>
               STANDBY
             </span>
           ) : isLoading ? (
-            <span className="flex items-center gap-1.5 text-[9px] font-mono text-cyber-cyan animate-pulse">
-              <span className="w-1 h-1 rounded-full bg-cyber-cyan animate-ping"></span>
+            <span className="flex items-center gap-1.5 text-[9px] font-mono text-cyber-cyan animate-pulse font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyber-cyan animate-ping"></span>
               DECODING
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 text-[9px] font-mono text-cyber-green">
-              <span className="w-1 h-1 rounded-full bg-cyber-green"></span>
+            <span className="flex items-center gap-1.5 text-[9px] font-mono text-cyber-green font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyber-green"></span>
               ANALYZED
             </span>
           )}
@@ -192,23 +319,36 @@ function WaveformViewer({
 
       <div className="p-6 space-y-4">
         {/* Metadata Details bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white/[0.01] border border-white/5 rounded-xl text-[10px] font-mono min-h-[46px]">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-zinc-500 uppercase shrink-0">File:</span>
-            <span className="text-zinc-300 truncate font-semibold" title={file ? file.name : 'No file selected'}>
-              {file ? file.name : '—'}
-            </span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl text-[10px] font-mono min-h-[46px]">
+          <div className="flex items-center gap-3.5 min-w-0">
+            {file && !isLoading && (
+              <button
+                onClick={handlePlayPause}
+                className="p-2 bg-cyber-cyan/10 border border-cyber-cyan/20 hover:bg-cyber-cyan/20 hover:border-cyber-cyan/40 text-cyber-cyan rounded-lg transition-all cursor-pointer active:scale-[0.93] shadow-sm flex items-center justify-center shrink-0"
+                title={isPlaying ? "Pause audio preview" : "Play audio preview"}
+              >
+                {isPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+              </button>
+            )}
+            <div className="min-w-0">
+              <span className="text-text-secondary uppercase shrink-0 text-[8px] tracking-wide block">Current File</span>
+              <span className="text-text-primary truncate font-semibold block leading-tight mt-0.5" title={file ? file.name : 'No file selected'}>
+                {file ? file.name : '—'}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-4 shrink-0 text-zinc-400">
+          <div className="flex items-center gap-4 shrink-0 text-text-primary">
             <div className="flex items-center gap-1.5">
-              <span className="text-zinc-500 uppercase">Size:</span>
-              <span>{file ? formatFileSize(file.size) : '—'}</span>
+              <span className="text-text-secondary uppercase font-normal text-[8px]">Playback Position</span>
+              <span className="font-mono text-xs font-semibold">
+                {currentTime.toFixed(2)}s / {duration.toFixed(1)}s
+              </span>
             </div>
           </div>
         </div>
 
         {/* Waveform Visualization Canvas / SVG Area */}
-        <div className="p-6 bg-white/[0.01] border border-white/5 rounded-2xl relative overflow-hidden flex flex-col justify-center min-h-[160px]">
+        <div className="p-6 bg-white/[0.01] border border-cyber-border/40 rounded-2xl relative overflow-hidden flex flex-col justify-center min-h-[160px]">
           {/* Subtle grid background for high-tech analyzer feel */}
           <div 
             className="absolute inset-0 opacity-[0.015] pointer-events-none"
@@ -242,23 +382,31 @@ function WaveformViewer({
               </svg>
               
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider border border-white/5 bg-zinc-950 px-3 py-1 rounded-md">
+                <p className="text-[9px] font-mono text-text-secondary uppercase tracking-wider border border-cyber-border/40 bg-cyber-black px-3.5 py-1.5 rounded-md shadow-sm">
                   Awaiting Audio Upload
                 </p>
               </div>
             </div>
           ) : isLoading ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-3 z-10">
-              <BarChart2 className="text-zinc-500 animate-pulse" size={24} />
-              <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider animate-pulse">
+              <BarChart2 className="text-text-secondary animate-pulse" size={24} />
+              <p className="text-[10px] font-mono text-text-secondary uppercase tracking-wider animate-pulse font-semibold">
                 Demuxing Audio Channels...
               </p>
             </div>
           ) : (
-            <div className="relative w-full h-32 flex items-center justify-center z-10 select-none">
+            <div 
+              className={`relative w-full h-32 flex items-center justify-center z-10 select-none overflow-hidden ${
+                zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'
+              }`}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+            >
               <svg 
                 className="w-full h-full text-cyber-cyan" 
-                viewBox="0 0 500 100" 
+                viewBox={`${panX} 0 ${500 / zoom} 100`} 
                 preserveAspectRatio="none"
               >
                 <defs>
@@ -269,7 +417,35 @@ function WaveformViewer({
                   </linearGradient>
                 </defs>
                 {renderedWaveformBars}
+                
+                {/* Playback Cursor Line */}
+                {duration > 0 && currentTime > 0 && (
+                  <line 
+                    x1={(currentTime / duration) * 500} 
+                    y1={0} 
+                    x2={(currentTime / duration) * 500} 
+                    y2={100} 
+                    stroke="#ff453a" 
+                    strokeWidth={1.5} 
+                  />
+                )}
               </svg>
+
+              {/* Hover Timestamp Line and Tooltip */}
+              {hoverTime !== null && (
+                <>
+                  <div 
+                    className="absolute top-0 bottom-0 w-[1px] bg-cyber-cyan/50 pointer-events-none z-20"
+                    style={{ left: `${hoverX}px` }}
+                  ></div>
+                  <div 
+                    className="absolute top-2 bg-cyber-dark/95 border border-cyber-border rounded px-2 py-0.5 text-[8px] font-mono text-text-primary pointer-events-none z-30 shadow-md"
+                    style={{ left: `${Math.min(hoverX + 10, 420)}px` }}
+                  >
+                    {hoverTime.toFixed(2)}s
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -285,8 +461,8 @@ function WaveformViewer({
         </div>
 
         {/* Informative micro-note */}
-        <div className="flex items-center gap-2 text-[9px] text-zinc-650 font-mono">
-          <Info size={11} className="text-zinc-600" />
+        <div className="flex items-center gap-2 text-[9px] text-text-secondary font-mono">
+          <Info size={11} className="text-text-secondary" />
           <span>Pure client-side FFT decoding. No telemetry or server interaction.</span>
         </div>
       </div>

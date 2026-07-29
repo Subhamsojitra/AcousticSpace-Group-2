@@ -14,12 +14,23 @@ import {
   Laptop
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
 
-const NAV_ITEMS = [
-  { name: 'Dashboard', path: '/', icon: Activity },
-  { name: 'Analysis Logs', path: '/logs', icon: History, disabled: true },
-  { name: 'RIR Simulator', path: '/simulator', icon: Terminal, disabled: true },
-  { name: 'Model settings', path: '/settings', icon: Settings, disabled: true },
+const NAV_GROUPS = [
+  {
+    title: 'Console Gateways',
+    items: [
+      { name: 'Acoustic Console', path: '/', icon: Activity },
+      { name: 'Analysis History', path: '/history', icon: History }
+    ]
+  },
+  {
+    title: 'Documentation',
+    items: [
+      { name: 'Model Specifications', path: '/model-info', icon: CpuIcon },
+      { name: 'Inference Pipeline', path: '/pipeline-info', icon: Terminal }
+    ]
+  }
 ];
 
 const THEMES = ['system', 'light', 'dark'];
@@ -27,10 +38,13 @@ const THEMES = ['system', 'light', 'dark'];
 export default function DashboardLayout({ children, apiStatus = 'checking', latency = null }) {
   const location = useLocation();
   const { theme, setTheme } = useTheme();
+  const { addToast } = useToast();
 
   const handleToggleTheme = () => {
     const nextIdx = (THEMES.indexOf(theme) + 1) % THEMES.length;
-    setTheme(THEMES[nextIdx]);
+    const nextTheme = THEMES[nextIdx];
+    setTheme(nextTheme);
+    addToast(`Theme switched to ${nextTheme.toUpperCase()}`, 'success');
   };
 
   return (
@@ -40,7 +54,7 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
         {/* Brand Logo */}
         <div className="p-6 border-b border-cyber-border flex items-center gap-3">
           <div className="p-2 rounded-lg bg-white/5 border border-cyber-border text-text-primary">
-            <ShieldAlert size={20} className="text-zinc-500" />
+            <ShieldAlert size={20} className="text-cyber-cyan" />
           </div>
           <div>
             <h1 className="font-display font-bold text-[14px] leading-tight tracking-tight text-text-primary uppercase">
@@ -53,42 +67,38 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
         </div>
 
         {/* Sidebar Nav Links */}
-        <nav className="flex-1 px-4 py-6 space-y-1">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            
-            if (item.disabled) {
-              return (
-                <div
-                  key={item.name}
-                  className="flex items-center gap-3 px-4 py-2.5 text-xs text-zinc-500 cursor-not-allowed rounded-lg transition-all group"
-                  title="Under construction - Phase 2"
-                >
-                  <Icon size={16} className="text-zinc-600" />
-                  <span>{item.name}</span>
-                  <span className="ml-auto text-[8px] font-mono border border-cyber-border bg-white/5 px-1.5 py-0.5 rounded text-zinc-500">
-                    LOCK
-                  </span>
-                </div>
-              );
-            }
+        <nav className="flex-1 px-4 py-6 space-y-6 overflow-y-auto">
+          {NAV_GROUPS.map((group, gIdx) => (
+            <div key={gIdx} className="space-y-2">
+              <h3 className="px-4 text-[9px] font-mono text-zinc-500 uppercase tracking-widest font-bold">
+                {group.title}
+              </h3>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
 
-            return (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`flex items-center gap-3 px-4 py-2.5 text-xs font-medium rounded-lg transition-all duration-200 group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyber-cyan/50 focus-visible:bg-white/5 ${
-                  isActive 
-                    ? 'bg-white/5 text-text-primary border border-cyber-border shadow-sm' 
-                    : 'text-zinc-400 hover:text-text-primary hover:bg-white/[0.02] border border-transparent'
-                }`}
-              >
-                <Icon size={16} className={isActive ? 'text-cyber-cyan' : 'text-zinc-500 group-hover:text-zinc-300 transition-colors'} />
-                <span>{item.name}</span>
-              </Link>
-            );
-          })}
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.path}
+                      className={`flex items-center gap-3 px-4 py-2.5 text-xs font-medium rounded-lg transition-all duration-300 relative group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyber-cyan/50 ${
+                        isActive 
+                          ? 'bg-white/5 text-text-primary border border-cyber-border shadow-sm font-semibold' 
+                          : 'text-zinc-400 hover:text-text-primary hover:bg-white/[0.015] border border-transparent'
+                      }`}
+                    >
+                      {isActive && (
+                        <span className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r bg-cyber-cyan"></span>
+                      )}
+                      <Icon size={14} className={isActive ? 'text-cyber-cyan' : 'text-zinc-500 group-hover:text-zinc-300 transition-colors duration-300'} />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* System Diagnostics Box */}
@@ -163,41 +173,47 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
 
           <div className="flex items-center gap-4">
             {/* Animated Theme Toggle Button */}
-            <button
-              onClick={handleToggleTheme}
-              className="theme-toggle-btn h-8 w-8 rounded-lg bg-white/5 border border-cyber-border hover:bg-white/10 text-text-primary cursor-pointer flex items-center justify-center relative overflow-hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyber-cyan/50"
-              style={{ padding: 0 }}
-              title={`Theme: ${theme.toUpperCase()} (Click to cycle)`}
-              aria-label={`Switch theme (current: ${theme})`}
-            >
-              <Sun 
-                size={14} 
-                className="absolute transition-all duration-500 text-amber-500" 
-                style={{
-                  opacity: theme === 'light' ? 1 : 0,
-                  transform: theme === 'light' ? 'rotate(0deg) scale(1)' : 'rotate(-90deg) scale(0)',
-                }}
-              />
-              <Moon 
-                size={14} 
-                className="absolute transition-all duration-500 text-cyber-cyan" 
-                style={{
-                  opacity: theme === 'dark' ? 1 : 0,
-                  transform: theme === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(90deg) scale(0)',
-                }}
-              />
-              <Laptop 
-                size={14} 
-                className="absolute transition-all duration-500 text-zinc-400" 
-                style={{
-                  opacity: theme === 'system' ? 1 : 0,
-                  transform: theme === 'system' ? 'scale(1)' : 'scale(0)',
-                }}
-              />
-            </button>
+            <div className="flex items-center gap-1.5 p-0.5 rounded-lg bg-white/5 border border-cyber-border/40 hover:border-cyber-border/80 transition-all duration-300">
+              <button
+                onClick={handleToggleTheme}
+                className="theme-toggle-btn h-7 px-3 rounded-md text-text-primary cursor-pointer flex items-center gap-2 relative overflow-hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyber-cyan/50 hover:bg-white/5 active:scale-95 transition-all duration-200"
+                title={`Theme: ${theme.toUpperCase()} (Click to cycle)`}
+                aria-label={`Switch theme (current: ${theme})`}
+              >
+                <div className="w-3.5 h-3.5 flex items-center justify-center relative shrink-0">
+                  <Sun 
+                    size={13} 
+                    className="absolute transition-all duration-500 text-amber-500" 
+                    style={{
+                      opacity: theme === 'light' ? 1 : 0,
+                      transform: theme === 'light' ? 'rotate(0deg) scale(1)' : 'rotate(-90deg) scale(0)',
+                    }}
+                  />
+                  <Moon 
+                    size={13} 
+                    className="absolute transition-all duration-500 text-cyber-cyan" 
+                    style={{
+                      opacity: theme === 'dark' ? 1 : 0,
+                      transform: theme === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(90deg) scale(0)',
+                    }}
+                  />
+                  <Laptop 
+                    size={13} 
+                    className="absolute transition-all duration-500 text-zinc-400" 
+                    style={{
+                      opacity: theme === 'system' ? 1 : 0,
+                      transform: theme === 'system' ? 'scale(1)' : 'scale(0)',
+                    }}
+                  />
+                </div>
+                <span className="text-[10px] font-mono font-medium text-text-secondary uppercase tracking-wider select-none">
+                  {theme}
+                </span>
+              </button>
+            </div>
 
             <div className="flex items-center gap-2.5 px-3 py-1 rounded-md bg-white/5 border border-cyber-border">
-              <span className="text-[10px] font-mono text-zinc-500">
+              <span className="text-[10px] font-mono text-text-secondary font-normal">
                 Threat Level:
               </span>
               <span className="text-[10px] font-mono font-bold text-cyber-rose uppercase tracking-wider">

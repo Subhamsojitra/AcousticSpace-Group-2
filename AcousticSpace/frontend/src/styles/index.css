@@ -8,31 +8,33 @@ html {
 /* Default Dark Theme Variables */
 html.dark, html:not(.light) {
   --bg: #000000;
-  --surface: rgba(22, 22, 23, 0.8);
-  --surface-secondary: rgba(28, 28, 30, 0.65);
-  --text-primary: rgba(255, 255, 255, 0.92);
+  --surface: rgba(22, 22, 23, 0.65);
+  --surface-secondary: rgba(28, 28, 30, 0.5);
+  --text-primary: rgba(255, 255, 255, 0.94);
   --text-secondary: #86868b;
-  --border: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.06);
   --accent: #0a84ff;
-  --accent-glow: rgba(10, 132, 255, 0.1);
+  --accent-glow: rgba(10, 132, 255, 0.12);
   --success: #30d158;
   --danger: #ff453a;
-  --shadow: 0 4px 30px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.08);
+  --card-radius: 20px;
 }
 
 /* Light Theme Variables */
 html.light {
   --bg: #f5f5f7;
-  --surface: rgba(255, 255, 255, 0.7);
-  --surface-secondary: rgba(245, 245, 247, 0.65);
+  --surface: rgba(255, 255, 255, 0.45);
+  --surface-secondary: rgba(245, 245, 247, 0.45);
   --text-primary: #1d1d1f;
   --text-secondary: #86868b;
-  --border: rgba(0, 0, 0, 0.08);
+  --border: rgba(0, 0, 0, 0.06);
   --accent: #0071e3;
   --accent-glow: rgba(0, 113, 227, 0.08);
   --success: #34c759;
   --danger: #ff3b30;
-  --shadow: 0 4px 30px rgba(0, 0, 0, 0.02), 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0, 0, 0, 0.05);
+  --card-radius: 20px;
 }
 
 @theme {
@@ -61,7 +63,7 @@ html.light {
     color: var(--text-primary);
     font-family: var(--font-display);
     overflow-x: hidden;
-    letter-spacing: -0.011em;
+    letter-spacing: -0.015em;
   }
 }
 
@@ -75,12 +77,12 @@ textarea,
 .nav-item,
 .theme-toggle-btn,
 .metric-card {
-  transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
-              border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
-              color 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
-              box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Keyframe animations */
@@ -92,16 +94,52 @@ textarea,
 @keyframes fade-in-spring {
   from {
     opacity: 0;
-    transform: scale(0.98) translateY(4px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }
 
 .animate-fadeIn {
-  animation: fade-in-spring 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fade-in-spring 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Entrance delays for staggered layout loading */
+.delay-75 {
+  animation-delay: 75ms;
+}
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-150 {
+  animation-delay: 150ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+/* Card hover scaling and lift */
+.hover-lift {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-lift:hover {
+  transform: scale(1.005) translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 50px -12px rgba(0, 0, 0, 0.75), 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+html.light .hover-lift:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 16px 50px -12px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.btn-active-scale:active {
+  transform: scale(0.97);
 }
 
 .scanner-line {
@@ -115,23 +153,24 @@ textarea,
 }
 
 .glow-shadow-cyan {
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2), 0 0 1px var(--accent-glow);
+  box-shadow: 0 12px 40px -10px rgba(10, 132, 255, 0.15), 0 0 1px var(--accent-glow);
 }
 
 .glow-shadow-green {
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2), 0 0 1px rgba(48, 209, 88, 0.1);
+  box-shadow: 0 12px 40px -10px rgba(48, 209, 88, 0.15), 0 0 1px rgba(48, 209, 88, 0.1);
 }
 
 .glow-shadow-rose {
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2), 0 0 1px rgba(255, 69, 58, 0.1);
+  box-shadow: 0 12px 40px -10px rgba(255, 69, 58, 0.15), 0 0 1px rgba(255, 69, 58, 0.1);
 }
 
 .glass-panel {
   background: var(--surface);
-  backdrop-filter: blur(20px) saturate(190%);
-  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
+  border-radius: var(--card-radius);
 }
 
 /* Polished rotation/crossfade animations for toggle icons */
