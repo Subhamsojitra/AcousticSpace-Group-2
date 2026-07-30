@@ -1,6 +1,7 @@
 import os
 
 from contextlib import asynccontextmanager
+import time
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,45 +22,39 @@ from app.database.db import Base, engine
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
 
+    startup_start = time.perf_counter()
+    logger.info("=" * 60)
     logger.info("AcousticSpace backend starting...")
+    logger.info("=" * 60)
 
-    # Ensure required runtime folders exist.
-    # (Config paths are relative to repo root in this project.)
-    import os
+    # Step 1: Ensure required runtime folders exist
+    t0 = time.perf_counter()
     from pathlib import Path
-
     for p in [settings.UPLOAD_DIR, settings.FEATURE_DIR, settings.MODEL_DIR, settings.LOG_DIR]:
         Path(p).mkdir(parents=True, exist_ok=True)
+    t_folders = time.perf_counter() - t0
+    logger.info(f"✓ Runtime folders ensured in {t_folders:.3f}s")
 
-    # Initialize DB tables.
+    # Step 2: Initialize DB tables
+    t0 = time.perf_counter()
     Base.metadata.create_all(bind=engine)
+    t_db = time.perf_counter() - t0
+    logger.info(f"✓ Database tables initialized in {t_db:.3f}s")
 
-    # Initialize app state for ML model integration
+    # Step 3: Initialize app state for ML model integration
+    # NOTE: Model loading is now LAZY - happens on first prediction request
     app.state.cnn_model = None
     app.state.ast_model = None
     app.state.feature_extractor = None
     app.state.model_ready = False
+    app.state.model_loading = False
+    logger.info("✓ App state initialized (model will load on first prediction)")
 
-    # Load AST model if available
-    try:
-        import torch
-        from transformers import ASTForAudioClassification, ASTFeatureExtractor
-        
-        model_path = settings.AST_MODEL_PATH
-        logger.info(f"Loading AST model from {model_path}...")
-        
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        app.state.ast_model = ASTForAudioClassification.from_pretrained(model_path).to(device)
-        app.state.ast_model.eval()
-        app.state.feature_extractor = ASTFeatureExtractor.from_pretrained(model_path)
-        app.state.model_ready = True
-        
-        logger.info(f"AST model loaded successfully on {device}")
-    except Exception as e:
-        logger.warning(f"Failed to load AST model: {e}. Using mock predictions.")
-        app.state.ast_model = None
-        app.state.feature_extractor = None
-        app.state.model_ready = False
+    total_startup = time.perf_counter() - startup_start
+    logger.info("=" * 60)
+    logger.info(f"✓ Startup completed in {total_startup:.3f}s")
+    logger.info(f"  (AST model will load on first prediction request)")
+    logger.info("=" * 60)
 
     yield
 
