@@ -171,9 +171,9 @@ export function validateHistoryResponse(data) {
  * Formats a confidence score into a percentage string.
  */
 export function formatConfidence(val) {
-  if (val === null || val === undefined || val === '') return '—';
+  if (val === null || val === undefined || val === '') return 'Available after backend inference';
   const num = Number(val);
-  if (isNaN(num)) return '—';
+  if (isNaN(num)) return 'Available after backend inference';
   const scaled = (num > 0 && num <= 1) ? num * 100 : num;
   return `${scaled.toFixed(1)}%`;
 }

@@ -7,14 +7,14 @@ const STAGE_LABELS = {
   predicting: 'Evaluating Neural AST Weights...',
 };
 
-export default function LoadingOverlay({ stage, error = null }) {
+export default function LoadingOverlay({ stage }) {
   if (!stage || stage === 'completed' || stage === 'idle' || stage === 'failed') return null;
 
   const currentLabel = STAGE_LABELS[stage] || 'Processing Audio Sample...';
 
   return (
-    <div className="fixed inset-0 bg-black/15 backdrop-blur-[5px] flex items-center justify-center z-50 p-4 transition-all duration-300 animate-fadeIn">
-      <div className="w-full max-w-[280px] bg-cyber-dark backdrop-blur-xl border border-cyber-border/80 rounded-2xl overflow-hidden shadow-2xl p-5 text-center flex flex-col items-center justify-center space-y-4">
+    <div className="fixed inset-0 bg-cyber-black/25 backdrop-blur-[2px] flex items-center justify-center z-50 p-4 transition-all duration-300 animate-fadeIn">
+      <div className="w-full max-w-[280px] bg-cyber-dark/95 backdrop-blur-xl border border-cyber-border rounded-2xl overflow-hidden shadow-2xl p-6 text-center flex flex-col items-center justify-center space-y-4">
         
         {/* Shield Indicator */}
         <div className="p-3.5 rounded-full bg-cyber-cyan/5 border border-cyber-cyan/35 text-cyber-cyan shadow-sm relative">

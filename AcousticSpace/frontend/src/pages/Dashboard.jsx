@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useRef, useCallback, Suspense, lazy } from 'react';
+import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { 
   FileAudio, 
-  Shield,
-  Play
+  Shield
 } from 'lucide-react';
 import AudioUpload from '../components/AudioUpload';
 import WaveformViewer from '../components/WaveformViewer';
@@ -18,9 +17,9 @@ import {
 } from '../services/apiHelpers';
 import { PredictionCardSkeleton } from '../components/PredictionCard';
 
-const ErrorAlert = lazy(() => import('../components/ErrorAlert'));
-const PredictionCard = lazy(() => import('../components/PredictionCard'));
-const LoadingOverlay = lazy(() => import('../components/LoadingOverlay'));
+import ErrorAlert from '../components/ErrorAlert';
+import PredictionCard from '../components/PredictionCard';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 const THEME_CLASSES = {
   amber: {
@@ -63,7 +62,7 @@ const getScannerConfig = (status) => {
   return config[status] || config.offline;
 };
 
-function Dashboard({ apiStatus = 'checking' }) {
+function Dashboard({ apiStatus = 'checking', backendVersion = null }) {
   const fileUpload = useFileUpload();
   const { file, error: pipelineError, handleFileChange, removeFile, setError: setPipelineError } = fileUpload;
   const { addToast } = useToast();
@@ -244,10 +243,10 @@ function Dashboard({ apiStatus = 'checking' }) {
   const hasConfidence = confidence !== null && confidence !== undefined && !isNaN(Number(confidence));
   const normPrediction = normalizePrediction(prediction);
 
-  const verificationValue = normPrediction ? normPrediction.toUpperCase() : '—';
+  const verificationValue = normPrediction ? normPrediction.toUpperCase() : 'Unavailable';
   const verificationChange = (normPrediction && hasConfidence)
     ? `Confidence: ${formatConfidence(confidence)}`
-    : 'Awaiting classification';
+    : 'Available after backend inference';
   const verificationTheme = normPrediction === 'real' ? 'green' : normPrediction === 'fake' ? 'rose' : 'gray';
 
   const pipelineStatus = getPipelineStatus(stage, !!file);
@@ -299,7 +298,12 @@ function Dashboard({ apiStatus = 'checking' }) {
             change: verificationChange, 
             theme: verificationTheme 
           },
-          { label: 'Classification F1', value: '98.4%', change: 'AST-v2 model spec', theme: 'cyan' },
+          { 
+            label: 'Model Status', 
+            value: apiStatus === 'online' ? 'READY' : 'Unavailable', 
+            change: apiStatus === 'online' ? `System version: ${backendVersion || '1.0.0'}` : 'Awaiting backend connection', 
+            theme: apiStatus === 'online' ? 'green' : 'gray' 
+          },
           { label: 'Scanner Status', value: scannerConfig.value, change: scannerConfig.change, theme: scannerConfig.theme }
         ].map((m, idx) => {
           const themeConfig = THEME_CLASSES[m.theme] || THEME_CLASSES.gray;
