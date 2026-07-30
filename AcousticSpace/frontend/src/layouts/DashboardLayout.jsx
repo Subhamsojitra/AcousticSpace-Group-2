@@ -1,10 +1,8 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
-  ShieldAlert, 
   Activity, 
   History, 
-  Settings, 
   Terminal, 
   Database, 
   Radio,
@@ -35,7 +33,7 @@ const NAV_GROUPS = [
 
 const THEMES = ['system', 'light', 'dark'];
 
-export default function DashboardLayout({ children, apiStatus = 'checking', latency = null }) {
+export default function DashboardLayout({ children, apiStatus = 'checking', latency = null, backendVersion = null }) {
   const location = useLocation();
   const { theme, setTheme } = useTheme();
   const { addToast } = useToast();
@@ -54,7 +52,14 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
         {/* Brand Logo */}
         <div className="p-6 border-b border-cyber-border flex items-center gap-3">
           <div className="p-2 rounded-lg bg-white/5 border border-cyber-border text-text-primary">
-            <ShieldAlert size={20} className="text-cyber-cyan" />
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyber-cyan">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M8 11v2" />
+              <path d="M10 9v6" />
+              <path d="M12 7v10" />
+              <path d="M14 9v6" />
+              <path d="M16 11v2" />
+            </svg>
           </div>
           <div>
             <h1 className="font-display font-bold text-[14px] leading-tight tracking-tight text-text-primary uppercase">
@@ -141,10 +146,10 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
                   size={11} 
                   className={apiStatus === 'online' ? 'text-cyber-green' : 'text-zinc-700'} 
                 />
-                AST MODEL v2.4
+                SYSTEM VERSION
               </span>
               <span className={`font-semibold ${apiStatus === 'online' ? 'text-cyber-green' : 'text-zinc-500'}`}>
-                {apiStatus === 'online' ? 'READY' : 'OFFLINE'}
+                {apiStatus === 'online' ? (backendVersion || '1.0.0') : 'Unavailable'}
               </span>
             </div>
             <div className="flex items-center justify-between text-[10px] font-mono">

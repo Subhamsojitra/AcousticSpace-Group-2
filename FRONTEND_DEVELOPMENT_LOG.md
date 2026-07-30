@@ -831,3 +831,34 @@ Today's focus was divided into two core phases: transforming the dashboard shell
 - Syncing custom SVG assets with native hidden HTML5 media playback nodes.
 
 ## Day 19 completed
+
+## Day 20 – Production Readiness & UX Refinement Pass (30 July 2026)
+
+### Overview
+Conducted a complete auditing pass on the frontend layout and scripts to improve performance perception, secure layout safety, replace unverified metrics with live connection version info, and standardize accessibility guidelines.
+
+### Work Completed
+- **Removed Fake Metrics & Versions:** Exchanged the hardcoded F1 metric `'98.4%'` for a dynamic **Model Status** card linked to backend availability. Replaced the sidebar's `'AST MODEL v2.4'` details with a dynamic `'SYSTEM VERSION'` row displaying the actual backend version fetched from `/` health check when online, and `'Unavailable'` when offline.
+- **Defensive Confidence Scores:** Updated `formatConfidence` inside `apiHelpers.js` to return `"Available after backend inference"` when confidence values are missing or `NaN`. This updates the teammate-owned `PredictionCard.jsx` without editing its source. In `History.jsx`, rendered `"Unavailable"` in the grid cells and `"Available after backend inference"` in the detailed inspect panel.
+- **Brand Identity Logo:** Substituted the warning Lucide icon with a custom SVG brand logo representing a shield with soundwaves inside. Removed unused imports `ShieldAlert` and `Settings`.
+- **Loading Overlay Improvements:** Lightened the loader backdrop to `bg-cyber-black/25` and `backdrop-blur-[2px]`. Statically imported scanner cards inside `Dashboard.jsx` to mount instantly when clicking "Analyze", preventing visual delay.
+- **Snappy CSS Transitions:** Decreased global CSS transition lengths from `0.4s` to `0.18s` inside `index.css`.
+- **List Memoization:** Memoized search sorting algorithms in `History.jsx` using `useMemo` to eliminate keystroke re-render delays.
+- **Keyboard Navigation Accessibility:** Implemented high-contrast `:focus-visible` outlines globally for all focused components. Configured focus outlines on inputs, select boxes, and close buttons. Added `aria-label` tags to icon buttons in `WaveformViewer.jsx`.
+
+### Files Modified
+- [apiHelpers.js](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/services/apiHelpers.js)
+- [App.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/App.jsx)
+- [DashboardLayout.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/layouts/DashboardLayout.jsx)
+- [Dashboard.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/Dashboard.jsx)
+- [LoadingOverlay.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/LoadingOverlay.jsx)
+- [WaveformViewer.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/WaveformViewer.jsx)
+- [History.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/History.jsx)
+- [index.css](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/styles/index.css)
+
+### Testing Performed
+- Ran production build `npm run build` which compiled successfully in **336ms**.
+- Ran `npm run lint` checks to confirm zero linting errors.
+- Verified dynamic statuses, fallback messages, and transitions manually.
+
+## Day 20 completed

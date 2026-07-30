@@ -15,6 +15,7 @@ const PipelineInfo = lazy(() => import('./pages/PipelineInfo'));
 function App() {
   const [apiStatus, setApiStatus] = useState('checking'); // 'online' | 'offline' | 'checking'
   const [latency, setLatency] = useState(null);
+  const [backendVersion, setBackendVersion] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -22,17 +23,20 @@ function App() {
       const startTime = performance.now();
       try {
         const res = await fetch(`${API_BASE_URL}/`, { method: 'GET' });
+        const data = await res.json().catch(() => ({}));
         const endTime = performance.now();
         const diff = Math.round(endTime - startTime);
         if (!res.ok) throw new Error();
         if (!cancelled) {
           setApiStatus('online');
           setLatency(diff);
+          setBackendVersion(data.version || null);
         }
       } catch {
         if (!cancelled) {
           setApiStatus('offline');
           setLatency(null);
+          setBackendVersion(null);
         }
       }
     }
@@ -49,14 +53,14 @@ function App() {
     <ThemeProvider>
       <ToastProvider>
         <Router>
-          <DashboardLayout apiStatus={apiStatus} latency={latency}>
+          <DashboardLayout apiStatus={apiStatus} latency={latency} backendVersion={backendVersion}>
             <Suspense fallback={
               <div className="flex items-center justify-center h-full p-8 text-zinc-500 font-mono text-xs">
                 Loading security console...
               </div>
             }>
               <Routes>
-                <Route path="/" element={<Dashboard apiStatus={apiStatus} />} />
+                <Route path="/" element={<Dashboard apiStatus={apiStatus} backendVersion={backendVersion} />} />
                 <Route path="/history" element={<History />} />
                 <Route path="/model-info" element={<ModelInfo apiStatus={apiStatus} latency={latency} />} />
                 <Route path="/pipeline-info" element={<PipelineInfo />} />

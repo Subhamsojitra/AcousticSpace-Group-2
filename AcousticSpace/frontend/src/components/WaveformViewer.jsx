@@ -278,8 +278,9 @@ function WaveformViewer({
                   const nextZoom = Math.min(5, zoom + 0.5);
                   setZoom(nextZoom);
                 }}
-                className="p-1 hover:bg-white/5 rounded text-text-secondary hover:text-text-primary cursor-pointer active:scale-95 transition-all"
+                className="p-1 hover:bg-white/5 rounded text-text-secondary hover:text-text-primary cursor-pointer active:scale-95 transition-all focus-visible:ring-1 focus-visible:ring-cyber-cyan/50 focus-visible:outline-none"
                 title="Zoom In"
+                aria-label="Zoom In Waveform"
               >
                 <ZoomIn size={12} />
               </button>
@@ -290,8 +291,9 @@ function WaveformViewer({
                   setZoom(nextZoom);
                   if (nextZoom === 1) setPanX(0);
                 }}
-                className="p-1 hover:bg-white/5 rounded text-text-secondary hover:text-text-primary cursor-pointer active:scale-95 transition-all"
+                className="p-1 hover:bg-white/5 rounded text-text-secondary hover:text-text-primary cursor-pointer active:scale-95 transition-all focus-visible:ring-1 focus-visible:ring-cyber-cyan/50 focus-visible:outline-none"
                 title="Zoom Out"
+                aria-label="Zoom Out Waveform"
               >
                 <ZoomOut size={12} />
               </button>
@@ -324,8 +326,9 @@ function WaveformViewer({
             {file && !isLoading && (
               <button
                 onClick={handlePlayPause}
-                className="p-2 bg-cyber-cyan/10 border border-cyber-cyan/20 hover:bg-cyber-cyan/20 hover:border-cyber-cyan/40 text-cyber-cyan rounded-lg transition-all cursor-pointer active:scale-[0.93] shadow-sm flex items-center justify-center shrink-0"
+                className="p-2 bg-cyber-cyan/10 border border-cyber-cyan/20 hover:bg-cyber-cyan/20 hover:border-cyber-cyan/40 text-cyber-cyan rounded-lg transition-all cursor-pointer active:scale-[0.93] shadow-sm flex items-center justify-center shrink-0 focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 focus-visible:outline-none"
                 title={isPlaying ? "Pause audio preview" : "Play audio preview"}
+                aria-label={isPlaying ? "Pause Audio Preview" : "Play Audio Preview"}
               >
                 {isPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
               </button>

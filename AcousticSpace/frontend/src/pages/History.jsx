@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { getHistory } from '../services/api';
 import { formatConfidence } from '../services/apiHelpers';
 import { 
@@ -66,32 +66,34 @@ export default function History() {
   };
 
   // Filter and Sort logs
-  const filteredList = historyList
-    .filter(record => {
-      const matchSearch = (record.filename || record.file_name || 'unknown.wav').toLowerCase().includes(search.toLowerCase());
-      const recordPrediction = (record.prediction || '').trim().toLowerCase();
-      const matchFilter = verdictFilter === 'all' || recordPrediction === verdictFilter;
-      return matchSearch && matchFilter;
-    })
-    .sort((a, b) => {
-      let aVal = a[sortField] || '';
-      let bVal = b[sortField] || '';
+  const filteredList = useMemo(() => {
+    return historyList
+      .filter(record => {
+        const matchSearch = (record.filename || record.file_name || 'unknown.wav').toLowerCase().includes(search.toLowerCase());
+        const recordPrediction = (record.prediction || '').trim().toLowerCase();
+        const matchFilter = verdictFilter === 'all' || recordPrediction === verdictFilter;
+        return matchSearch && matchFilter;
+      })
+      .sort((a, b) => {
+        let aVal = a[sortField] || '';
+        let bVal = b[sortField] || '';
 
-      if (sortField === 'date') {
-        aVal = a.timestamp || a.created_at || '';
-        bVal = b.timestamp || b.created_at || '';
-      } else if (sortField === 'confidence') {
-        aVal = Number(a.confidence) || 0;
-        bVal = Number(b.confidence) || 0;
-      } else if (sortField === 'name') {
-        aVal = (a.filename || a.file_name || '').toLowerCase();
-        bVal = (b.filename || b.file_name || '').toLowerCase();
-      }
+        if (sortField === 'date') {
+          aVal = a.timestamp || a.created_at || '';
+          bVal = b.timestamp || b.created_at || '';
+        } else if (sortField === 'confidence') {
+          aVal = Number(a.confidence) || 0;
+          bVal = Number(b.confidence) || 0;
+        } else if (sortField === 'name') {
+          aVal = (a.filename || a.file_name || '').toLowerCase();
+          bVal = (b.filename || b.file_name || '').toLowerCase();
+        }
 
-      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
+        if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+  }, [historyList, search, verdictFilter, sortField, sortOrder]);
 
   return (
     <div className="space-y-8 animate-fadeIn relative pb-4">
@@ -121,7 +123,7 @@ export default function History() {
                 placeholder="Search database filename..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-white/5 border border-cyber-border/40 hover:border-cyber-border/80 focus:border-cyber-cyan/50 text-xs text-text-primary pl-9 pr-4 py-2 rounded-xl focus-visible:outline-none transition-all font-mono"
+                className="w-full bg-white/5 border border-cyber-border/40 hover:border-cyber-border/80 focus:border-cyber-cyan/50 focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 text-xs text-text-primary pl-9 pr-4 py-2 rounded-xl focus-visible:outline-none transition-all font-mono"
               />
             </div>
 
@@ -131,7 +133,7 @@ export default function History() {
               <select
                 value={verdictFilter}
                 onChange={(e) => setVerdictFilter(e.target.value)}
-                className="bg-white/5 border border-cyber-border/40 hover:border-cyber-border/80 text-xs text-text-primary px-3 py-2 rounded-xl focus-visible:outline-none cursor-pointer transition-all font-mono"
+                className="bg-white/5 border border-cyber-border/40 hover:border-cyber-border/80 focus:border-cyber-cyan/50 focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 text-xs text-text-primary px-3 py-2 rounded-xl focus-visible:outline-none cursor-pointer transition-all font-mono"
               >
                 <option value="all">All Verdicts</option>
                 <option value="real">Authentic (Real)</option>
@@ -205,7 +207,9 @@ export default function History() {
                       const isReal = (record.prediction || '').trim().toLowerCase() === 'real';
                       const rowDate = record.timestamp || record.created_at || '—';
                       const rowName = record.filename || record.file_name || 'unknown_payload.wav';
-                      const rowConfidence = formatConfidence(record.confidence);
+                      const rowConfidence = (record.confidence !== null && record.confidence !== undefined && record.confidence !== '' && !isNaN(Number(record.confidence)))
+                        ? formatConfidence(record.confidence)
+                        : 'Unavailable';
                       const isSelected = selectedRecord?.id === record.id;
 
                       return (
@@ -233,7 +237,10 @@ export default function History() {
                             {rowConfidence}
                           </td>
                           <td className="p-4 text-center">
-                            <button className="p-1.5 hover:bg-white/10 rounded transition-all text-text-secondary hover:text-text-primary active:scale-90">
+                            <button 
+                              className="p-1.5 hover:bg-white/10 rounded transition-all text-text-secondary hover:text-text-primary active:scale-90 focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 focus-visible:outline-none"
+                              aria-label={`Inspect details for ${rowName}`}
+                            >
                               <ArrowRight size={12} />
                             </button>
                           </td>
@@ -312,7 +319,8 @@ export default function History() {
               <div className="pt-4 border-t border-cyber-border/40 text-center">
                 <button 
                   onClick={() => setSelectedRecord(null)}
-                  className="px-4 py-2 text-[10px] font-semibold text-text-secondary hover:text-text-primary border border-cyber-border/60 hover:border-cyber-border rounded-xl cursor-pointer transition-all active:scale-95 btn-active-scale"
+                  className="px-4 py-2 text-[10px] font-semibold text-text-secondary hover:text-text-primary border border-cyber-border/60 hover:border-cyber-border rounded-xl cursor-pointer transition-all active:scale-95 btn-active-scale focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 focus-visible:outline-none"
+                  aria-label="Close details inspect panel"
                 >
                   Close Inspect Panel
                 </button>
