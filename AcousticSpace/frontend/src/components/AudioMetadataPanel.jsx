@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Info, Disc, Clock, Activity, HardDrive, Cpu } from 'lucide-react';
 import { formatFileSize } from '../utils/fileValidation';
 
-export default function AudioMetadataPanel({ file }) {
+function AudioMetadataPanel({ file }) {
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +37,7 @@ export default function AudioMetadataPanel({ file }) {
         } finally {
           try {
             audioCtx.close();
-          } catch (e) {}
+          } catch {}
         }
       } catch (err) {
         console.error('MIME mapping metadata error', err);
@@ -135,3 +135,5 @@ export default function AudioMetadataPanel({ file }) {
     </div>
   );
 }
+
+export default React.memo(AudioMetadataPanel);

@@ -1,11 +1,8 @@
 import React from 'react';
 import { 
   Cpu, 
-  Database, 
   Activity, 
   HelpCircle, 
-  FileAudio, 
-  CheckCircle, 
   Radio
 } from 'lucide-react';
 

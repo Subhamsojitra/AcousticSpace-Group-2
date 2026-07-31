@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { getHistory } from '../services/api';
 import { formatConfidence } from '../services/apiHelpers';
 import { 
@@ -29,6 +29,14 @@ export default function History() {
   const [selectedRecord, setSelectedRecord] = useState(null);
 
   const { addToast } = useToast();
+
+  const handleSelectRecord = useCallback((record) => {
+    setSelectedRecord(record);
+  }, []);
+
+  const handleCloseInspect = useCallback(() => {
+    setSelectedRecord(null);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -135,9 +143,9 @@ export default function History() {
                 onChange={(e) => setVerdictFilter(e.target.value)}
                 className="bg-white/5 border border-cyber-border/40 hover:border-cyber-border/80 focus:border-cyber-cyan/50 focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 text-xs text-text-primary px-3 py-2 rounded-xl focus-visible:outline-none cursor-pointer transition-all font-mono"
               >
-                <option value="all">All Verdicts</option>
-                <option value="real">Authentic (Real)</option>
-                <option value="fake">Suspicious (Fake)</option>
+                <option value="all" className="bg-cyber-black text-text-primary">All Verdicts</option>
+                <option value="real" className="bg-cyber-black text-text-primary">Authentic (Real)</option>
+                <option value="fake" className="bg-cyber-black text-text-primary">Suspicious (Fake)</option>
               </select>
             </div>
           </div>
@@ -203,129 +211,27 @@ export default function History() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredList.map((record, index) => {
-                      const isReal = (record.prediction || '').trim().toLowerCase() === 'real';
-                      const rowDate = record.timestamp || record.created_at || '—';
-                      const rowName = record.filename || record.file_name || 'unknown_payload.wav';
-                      const rowConfidence = (record.confidence !== null && record.confidence !== undefined && record.confidence !== '' && !isNaN(Number(record.confidence)))
-                        ? formatConfidence(record.confidence)
-                        : 'Unavailable';
-                      const isSelected = selectedRecord?.id === record.id;
-
-                      return (
-                        <tr
-                          key={record.id || index}
-                          onClick={() => setSelectedRecord(record)}
-                          className={`border-b border-cyber-border/20 transition-all cursor-pointer hover:bg-white/[0.01] ${
-                            isSelected ? 'bg-white/5 font-semibold border-l-2 border-l-cyber-cyan' : ''
-                          }`}
-                        >
-                          <td className="p-4 font-semibold text-text-primary max-w-[200px] truncate" title={rowName}>
-                            {rowName}
-                          </td>
-                          <td className="p-4 text-text-secondary text-[11px]">{rowDate}</td>
-                          <td className="p-4">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                              isReal 
-                                ? 'bg-cyber-green/5 border border-cyber-green/20 text-cyber-green' 
-                                : 'bg-cyber-rose/5 border border-cyber-rose/20 text-cyber-rose'
-                            }`}>
-                              {isReal ? 'REAL' : 'FAKE'}
-                            </span>
-                          </td>
-                          <td className="p-4 text-text-primary font-bold text-[11px]">
-                            {rowConfidence}
-                          </td>
-                          <td className="p-4 text-center">
-                            <button 
-                              className="p-1.5 hover:bg-white/10 rounded transition-all text-text-secondary hover:text-text-primary active:scale-90 focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 focus-visible:outline-none"
-                              aria-label={`Inspect details for ${rowName}`}
-                            >
-                              <ArrowRight size={12} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {filteredList.map((record, index) => (
+                      <HistoryRow
+                        key={record.id || index}
+                        record={record}
+                        isSelected={selectedRecord?.id === record.id}
+                        onSelect={handleSelectRecord}
+                      />
+                    ))}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
         </div>
-
         {/* Right Column: Record Detail View Panel */}
         <div className="xl:col-span-1">
           {selectedRecord ? (
-            <div className="bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl p-6 shadow-md space-y-6 animate-fadeIn">
-              <div className="flex justify-between items-start gap-4 pb-4 border-b border-cyber-border/40">
-                <div className="min-w-0">
-                  <span className="text-[9px] font-mono text-text-secondary uppercase tracking-wider">
-                    SPECIFICATION INSPECT
-                  </span>
-                  <h2 className="text-sm font-semibold tracking-tight text-text-primary truncate mt-1" title={selectedRecord.filename || selectedRecord.file_name}>
-                    {selectedRecord.filename || selectedRecord.file_name || 'unknown_payload.wav'}
-                  </h2>
-                </div>
-                <div className={`p-2 rounded-lg border shrink-0 ${
-                  (selectedRecord.prediction || '').trim().toLowerCase() === 'real'
-                    ? 'bg-white/5 border-cyber-green/20 text-cyber-green'
-                    : 'bg-white/5 border-cyber-rose/20 text-cyber-rose'
-                }`}>
-                  {(selectedRecord.prediction || '').trim().toLowerCase() === 'real' ? <ShieldCheck size={20} /> : <ShieldAlert size={20} />}
-                </div>
-              </div>
-
-              <div className="space-y-4 font-mono text-[11px]">
-                <div className="p-3.5 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-2">
-                  <span className="text-[8px] text-text-secondary uppercase tracking-wider block font-bold">Security Verdict</span>
-                  <p className="text-text-secondary leading-relaxed">
-                    Classified as <strong className={(selectedRecord.prediction || '').trim().toLowerCase() === 'real' ? 'text-cyber-green' : 'text-cyber-rose'}>
-                      {(selectedRecord.prediction || 'Unknown').toUpperCase()}
-                    </strong> with statistical probability score of <strong className="text-text-primary">{formatConfidence(selectedRecord.confidence)}</strong>.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-1">
-                    <span className="text-[8px] text-text-secondary uppercase tracking-wider block">Duration</span>
-                    <span className="text-xs text-text-primary font-bold">{selectedRecord.analysis?.duration ? `${Number(selectedRecord.analysis.duration).toFixed(2)}s` : '—'}</span>
-                  </div>
-                  <div className="p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-1">
-                    <span className="text-[8px] text-text-secondary uppercase tracking-wider block">Sample Rate</span>
-                    <span className="text-xs text-text-primary font-bold">{selectedRecord.analysis?.sample_rate ? `${selectedRecord.analysis.sample_rate} Hz` : '—'}</span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-2">
-                  <span className="text-[8px] text-text-secondary uppercase tracking-wider block">Scan Timestamp</span>
-                  <div className="flex items-center gap-2 text-text-primary font-semibold">
-                    <Calendar size={12} className="text-text-secondary" />
-                    <span>{selectedRecord.timestamp || selectedRecord.created_at || '—'}</span>
-                  </div>
-                </div>
-
-                {selectedRecord.processing_time && (
-                  <div className="p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-2">
-                    <span className="text-[8px] text-text-secondary uppercase tracking-wider block">Inference Process Time</span>
-                    <div className="flex items-center gap-2 text-text-primary font-semibold">
-                      <TrendingUp size={12} className="text-text-secondary" />
-                      <span>{selectedRecord.processing_time}s</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-4 border-t border-cyber-border/40 text-center">
-                <button 
-                  onClick={() => setSelectedRecord(null)}
-                  className="px-4 py-2 text-[10px] font-semibold text-text-secondary hover:text-text-primary border border-cyber-border/60 hover:border-cyber-border rounded-xl cursor-pointer transition-all active:scale-95 btn-active-scale focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 focus-visible:outline-none"
-                  aria-label="Close details inspect panel"
-                >
-                  Close Inspect Panel
-                </button>
-              </div>
-            </div>
+            <RecordDetailPanel 
+              record={selectedRecord} 
+              onClose={handleCloseInspect} 
+            />
           ) : (
             <div className="bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl p-6 flex flex-col items-center justify-center text-center py-12">
               <Info size={20} className="text-text-secondary animate-pulse" />
@@ -338,8 +244,130 @@ export default function History() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );
 }
+
+const HistoryRow = React.memo(({ record, isSelected, onSelect }) => {
+  const isReal = (record.prediction || '').trim().toLowerCase() === 'real';
+  const rowDate = record.timestamp || record.created_at || '—';
+  const rowName = record.filename || record.file_name || 'unknown_payload.wav';
+  const rowConfidence = (record.confidence !== null && record.confidence !== undefined && record.confidence !== '' && !isNaN(Number(record.confidence)))
+    ? formatConfidence(record.confidence)
+    : 'Unavailable';
+
+  return (
+    <tr
+      onClick={() => onSelect(record)}
+      className={`border-b border-cyber-border/20 transition-all cursor-pointer hover:bg-white/[0.01] ${
+        isSelected ? 'bg-white/5 font-semibold border-l-2 border-l-cyber-cyan' : ''
+      }`}
+    >
+      <td className="p-4 font-semibold text-text-primary max-w-[200px] truncate" title={rowName}>
+        {rowName}
+      </td>
+      <td className="p-4 text-text-secondary text-[11px]">{rowDate}</td>
+      <td className="p-4">
+        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+          isReal 
+            ? 'bg-cyber-green/5 border border-cyber-green/20 text-cyber-green' 
+            : 'bg-cyber-rose/5 border border-cyber-rose/20 text-cyber-rose'
+        }`}>
+          {isReal ? 'REAL' : 'FAKE'}
+        </span>
+      </td>
+      <td className="p-4 text-text-primary font-bold text-[11px]">
+        {rowConfidence}
+      </td>
+      <td className="p-4 text-center">
+        <button 
+          className="p-1.5 hover:bg-white/10 rounded transition-all text-text-secondary hover:text-text-primary active:scale-90 focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 focus-visible:outline-none"
+          aria-label={`Inspect details for ${rowName}`}
+        >
+          <ArrowRight size={12} />
+        </button>
+      </td>
+    </tr>
+  );
+});
+
+HistoryRow.displayName = 'HistoryRow';
+
+const RecordDetailPanel = React.memo(({ record, onClose }) => {
+  const isReal = (record.prediction || '').trim().toLowerCase() === 'real';
+
+  return (
+    <div className="bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl p-6 shadow-md space-y-6 animate-fadeIn">
+      <div className="flex justify-between items-start gap-4 pb-4 border-b border-cyber-border/40">
+        <div className="min-w-0">
+          <span className="text-[9px] font-mono text-text-secondary uppercase tracking-wider">
+            SPECIFICATION INSPECT
+          </span>
+          <h2 className="text-sm font-semibold tracking-tight text-text-primary truncate mt-1" title={record.filename || record.file_name}>
+            {record.filename || record.file_name || 'unknown_payload.wav'}
+          </h2>
+        </div>
+        <div className={`p-2 rounded-lg border shrink-0 ${
+          isReal
+            ? 'bg-white/5 border-cyber-green/20 text-cyber-green'
+            : 'bg-white/5 border-cyber-rose/20 text-cyber-rose'
+        }`}>
+          {isReal ? <ShieldCheck size={20} /> : <ShieldAlert size={20} />}
+        </div>
+      </div>
+
+      <div className="space-y-4 font-mono text-[11px]">
+        <div className="p-3.5 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-2">
+          <span className="text-[8px] text-text-secondary uppercase tracking-wider block font-bold">Security Verdict</span>
+          <p className="text-text-secondary leading-relaxed">
+            Classified as <strong className={isReal ? 'text-cyber-green' : 'text-cyber-rose'}>
+              {(record.prediction || 'Unknown').toUpperCase()}
+            </strong> with statistical probability score of <strong className="text-text-primary">{formatConfidence(record.confidence)}</strong>.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-1">
+            <span className="text-[8px] text-text-secondary uppercase tracking-wider block">Duration</span>
+            <span className="text-xs text-text-primary font-bold">{record.analysis?.duration ? `${Number(record.analysis.duration).toFixed(2)}s` : '—'}</span>
+          </div>
+          <div className="p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-1">
+            <span className="text-[8px] text-text-secondary uppercase tracking-wider block">Sample Rate</span>
+            <span className="text-xs text-text-primary font-bold">{record.analysis?.sample_rate ? `${record.analysis.sample_rate} Hz` : '—'}</span>
+          </div>
+        </div>
+
+        <div className="p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-2">
+          <span className="text-[8px] text-text-secondary uppercase tracking-wider block">Scan Timestamp</span>
+          <div className="flex items-center gap-2 text-text-primary font-semibold">
+            <Calendar size={12} className="text-text-secondary" />
+            <span>{record.timestamp || record.created_at || '—'}</span>
+          </div>
+        </div>
+
+        {record.processing_time && (
+          <div className="p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-2">
+            <span className="text-[8px] text-text-secondary uppercase tracking-wider block">Inference Process Time</span>
+            <div className="flex items-center gap-2 text-text-primary font-semibold">
+              <TrendingUp size={12} className="text-text-secondary" />
+              <span>{record.processing_time}s</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="pt-4 border-t border-cyber-border/40 text-center">
+        <button 
+          onClick={onClose}
+          className="px-4 py-2 text-[10px] font-semibold text-text-secondary hover:text-text-primary border border-cyber-border/60 hover:border-cyber-border rounded-xl cursor-pointer transition-all active:scale-95 btn-active-scale focus-visible:ring-2 focus-visible:ring-cyber-cyan/50 focus-visible:outline-none"
+          aria-label="Close details inspect panel"
+        >
+          Close Inspect Panel
+        </button>
+      </div>
+    </div>
+  );
+});
+
+RecordDetailPanel.displayName = 'RecordDetailPanel';

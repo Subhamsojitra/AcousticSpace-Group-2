@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Activity, Info, BarChart2, Play, Pause, ZoomIn, ZoomOut } from 'lucide-react';
-import { formatFileSize } from '../utils/fileValidation';
 
 /**
  * Generates a deterministic fallback waveform visualization based on a seed string.
@@ -46,7 +45,8 @@ function WaveformViewer({
   const [isPanning, setIsPanning] = useState(false);
   const [startX, setStartX] = useState(0);
   
-  const audioRef = React.useRef(null);
+  const audioRef = useRef(null);
+  const rectRef = useRef(null);
 
   // Derived state to support either internal processing or external backend data
   const isLoading = externalLoading || loading;
@@ -145,7 +145,7 @@ function WaveformViewer({
           console.warn('Audio decoding failed, using fallback visual representation', decodeError);
           try {
             audioCtx.close();
-          } catch (e) {
+          } catch {
             // Ignore error closing context if already closed
           }
           if (active) {
@@ -198,14 +198,22 @@ function WaveformViewer({
     });
   }, [amplitudes]);
 
+  const handleMouseEnter = (e) => {
+    rectRef.current = e.currentTarget.getBoundingClientRect();
+  };
+
   const handleMouseDown = (e) => {
+    rectRef.current = e.currentTarget.getBoundingClientRect();
     if (zoom <= 1) return;
     setIsPanning(true);
     setStartX(e.clientX - panX);
   };
 
   const handleMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rectRef.current) {
+      rectRef.current = e.currentTarget.getBoundingClientRect();
+    }
+    const rect = rectRef.current;
     const relativeX = (e.clientX - rect.left) / rect.width;
     
     if (duration > 0) {
@@ -228,11 +236,13 @@ function WaveformViewer({
 
   const handleMouseUp = () => {
     setIsPanning(false);
+    rectRef.current = null;
   };
 
   const handleMouseLeave = () => {
     setIsPanning(false);
     setHoverTime(null);
+    rectRef.current = null;
   };
 
   const handlePlayPause = () => {
@@ -402,6 +412,7 @@ function WaveformViewer({
               className={`relative w-full h-32 flex items-center justify-center z-10 select-none overflow-hidden ${
                 zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'
               }`}
+              onMouseEnter={handleMouseEnter}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
