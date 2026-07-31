@@ -7,7 +7,6 @@ import {
   Cpu, 
   TrendingUp, 
   ShieldCheck, 
-  ArrowDown, 
   Info,
   ChevronRight
 } from 'lucide-react';
@@ -89,7 +88,6 @@ export default function PipelineInfo() {
               <div className="absolute left-[9px] top-4 bottom-4 w-[1px] bg-cyber-border/40"></div>
 
               {PIPELINE_NODES.map((node) => {
-                const Icon = node.icon;
                 const isActive = activeNode === node.id;
                 
                 return (

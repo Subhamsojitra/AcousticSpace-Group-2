@@ -7,7 +7,7 @@ const STAGE_LABELS = {
   predicting: 'Evaluating Neural AST Weights...',
 };
 
-export default function LoadingOverlay({ stage }) {
+function LoadingOverlay({ stage }) {
   if (!stage || stage === 'completed' || stage === 'idle' || stage === 'failed') return null;
 
   const currentLabel = STAGE_LABELS[stage] || 'Processing Audio Sample...';
@@ -46,3 +46,5 @@ export default function LoadingOverlay({ stage }) {
     </div>
   );
 }
+
+export default React.memo(LoadingOverlay);

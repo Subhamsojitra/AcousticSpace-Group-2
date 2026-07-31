@@ -862,3 +862,72 @@ Conducted a complete auditing pass on the frontend layout and scripts to improve
 - Verified dynamic statuses, fallback messages, and transitions manually.
 
 ## Day 20 completed
+
+## Day 21 – Frontend Stability, Code Quality & Production Readiness Pass (31 July 2026)
+
+### Overview
+Conducted a complete stability, code quality, and production readiness audit of the AcousticSpace frontend control console. Resolved minor linter warnings, refined dropdown select UX styling, performed extensive end-to-end verification, and verified compatibility with the active FastAPI backend.
+
+### Work Completed
+- **Linter & Code Quality Improvements:**
+  - Resolved unused import warnings in [ModelInfo.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/ModelInfo.jsx) (removed `Database`, `FileAudio`, `CheckCircle`).
+  - Resolved unused import `ArrowDown` and unused variable `Icon` inside [PipelineInfo.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/PipelineInfo.jsx).
+  - Cleaned up [WaveformViewer.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/WaveformViewer.jsx) by removing unused import `formatFileSize`, changing the `React.useRef` call to use the imported `useRef` directly, and using optional catch bindings (`catch {}`) inside the decode audio fallback check to remove the unused `e` parameter.
+  - Updated [AudioMetadataPanel.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/AudioMetadataPanel.jsx) catch blocks to use optional catch bindings, removing the unused error binding.
+  - Renamed the unused parameter `id` in `removeToast` to `_id` in [ToastContext.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/context/ToastContext.jsx).
+- **UX Polish:**
+  - Fixed options dropdown style bleeding in [History.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/History.jsx) by applying theme-aware class names (`bg-cyber-black text-text-primary`) on the verdict filter `<option>` elements, preventing visual defaults clash.
+- **End-to-End Testing & Integration:**
+  - Audited the theme switcher, sidebar navigation, specs pages, interactive timeline nodes, file upload, waveform rendering, and analysis execution.
+  - Verified backend integration status (`ONLINE`), version retrieval, and processing latency under the specifications dashboard connection diagnostic.
+  - Uploaded a test MP3 file, witnessed client-side waveform demuxing and interactive zoom, ran full scan pipelines (Upload -> Decode -> Isolated RIR -> AST inference -> Verdict), and verified that the database log registers the results.
+  - Checked backend offline behavior and confirmed the dashboard and history pages handle server outages gracefully using user-friendly error fallback alerts.
+
+### Files Modified
+- [ModelInfo.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/ModelInfo.jsx)
+- [PipelineInfo.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/PipelineInfo.jsx)
+- [WaveformViewer.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/WaveformViewer.jsx)
+- [AudioMetadataPanel.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/AudioMetadataPanel.jsx)
+- [ToastContext.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/context/ToastContext.jsx)
+- [History.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/History.jsx)
+
+### Testing Performed
+- Ran `npm run lint` and confirmed **0 errors and warnings** (excluding Vite Fast Refresh hooks).
+- Ran production build `npm run build` which compiled successfully in **667ms**.
+- Audited the entire application using automated browser test agents with active FastAPI backend port connections.
+
+## Day 21 completed
+
+## Day 21 – Production Performance Optimization Pass (31 July 2026 - Continuation)
+
+### Overview
+Conducted a targeted performance optimization pass across key components in the AcousticSpace frontend control console to resolve perceived UI sluggishness and interaction latency. We optimized client rect checks, memoized rendering paths, refined transitioning layers, and executed full end-to-end performance audits.
+
+### Work Completed
+- **Eliminated Waveform layout reflows:**
+  - Added a `rectRef` cache in [WaveformViewer.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/WaveformViewer.jsx) to store the container's client bounding rect. Calculated coordinates during mouse cursor hover and pan movements using the cached ref rather than triggering `getBoundingClientRect()` at 60fps, preventing forced layout reflows.
+- **Isolated database registry re-renders:**
+  - Extracted log grid rows into a memoized `HistoryRow` sub-component inside [History.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/History.jsx).
+  - Extracted inspector detail drawers into a memoized `RecordDetailPanel` sub-component inside [History.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/History.jsx).
+  - Configured search selection and closing actions with stable `useCallback` hook references (`handleSelectRecord`, `handleCloseInspect`). This prevents full-page re-renders during search keystrokes and sorting.
+- **Memoized child panels:**
+  - Wrapped [TimelineProgress.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/TimelineProgress.jsx), [AudioMetadataPanel.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/AudioMetadataPanel.jsx), and [LoadingOverlay.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/LoadingOverlay.jsx) in `React.memo` to shield them from parent dashboard state ticks (such as dynamic diagnostics server connection status updates).
+- **Accelerated hardware compositing layers:**
+  - Modified [index.css](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/styles/index.css) to separate transitions. Restrained static glass panels to color-only changes, preventing heavy backdrop filter repaints during scaling or translation.
+  - Promoted hover-lift cards to their own GPU composition layers using `will-change: transform, box-shadow` and reduced transit timing to `0.25s`.
+  - Tuned interactive button and input hover transitions to `0.15s` for a snappier control console feel.
+
+### Files Modified
+- [WaveformViewer.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/WaveformViewer.jsx)
+- [History.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/History.jsx)
+- [TimelineProgress.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/TimelineProgress.jsx)
+- [AudioMetadataPanel.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/AudioMetadataPanel.jsx)
+- [LoadingOverlay.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/LoadingOverlay.jsx)
+- [index.css](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/styles/index.css)
+
+### Testing Performed
+- Verified syntax correctness with `npm run lint` returning zero oxlint errors.
+- Verified bundle builds with `npm run build` compiling the application in **761ms**.
+- Conducted full browser subagent automated testing validating page load, theme toggle responsiveness, search filtering typing speed, waveform drag and panning frames, and end-to-end payload scanning.
+
+## Day 21 completed

@@ -12,7 +12,7 @@ const STAGES = [
   { id: 'verdict', label: 'Generate Integrity Verdict', desc: 'Signing final authenticity verdict' }
 ];
 
-export default function TimelineProgress({ stage, error = null }) {
+function TimelineProgress({ stage, error = null }) {
   // Map current execute stage to current index
   // stage: 'idle' | 'uploading' | 'extracting' | 'predicting' | 'completed' | 'failed'
   const getStageStates = () => {
@@ -124,3 +124,5 @@ export default function TimelineProgress({ stage, error = null }) {
     </div>
   );
 }
+
+export default React.memo(TimelineProgress);

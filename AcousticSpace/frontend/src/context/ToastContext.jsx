@@ -7,7 +7,7 @@ export function ToastProvider({ children }) {
   const [queue, setQueue] = useState([]);
   const timerRef = useRef(null);
 
-  const removeToast = useCallback((id) => {
+  const removeToast = useCallback((_id) => {
     setToasts([]);
     if (timerRef.current) {
       clearTimeout(timerRef.current);
