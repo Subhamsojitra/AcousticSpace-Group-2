@@ -1,6 +1,8 @@
 # AcousticSpace-Group-2
 # AcousticSpace Backend
 
+Backend implementation for the **AcousticSpace-Group-2** project.
+
 Backend implementation for **AcousticSpace**, an AI-powered Deepfake Audio Detection platform that analyzes uploaded audio using acoustic features extracted with Librosa and serves results through a FastAPI REST API.
 
 ---
@@ -48,7 +50,44 @@ backend
 ├── requirements.txt
 └── Dockerfile
 ```
+## Backend Workflow
 
+```text
+Client
+   │
+   ▼
+Upload Audio
+   │
+   ▼
+FastAPI API
+   │
+   ▼
+Audio Validation
+   │
+   ▼
+Librosa Audio Loader
+   │
+   ▼
+Audio Preprocessing
+   │
+   ▼
+Feature Extraction
+   │
+   ├── MFCC
+   ├── Mel Spectrogram
+   ├── Chroma
+   ├── Spectral Features
+   ├── RIR Features
+   └── Breathing Features
+   │
+   ▼
+Inference Service
+   │
+   ▼
+Database
+   │
+   ▼
+JSON Response
 ---
 
 # Technology Stack

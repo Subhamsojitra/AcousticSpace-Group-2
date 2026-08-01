@@ -1,399 +1,458 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  UploadCloud,
-  FileAudio,
-  Activity,
-  Info,
-  Shield,
+import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
+import { 
+  FileAudio, 
+  Shield
 } from 'lucide-react';
+import AudioUpload from '../components/AudioUpload';
+import WaveformViewer from '../components/WaveformViewer';
+import TimelineProgress from '../components/TimelineProgress';
+import AudioMetadataPanel from '../components/AudioMetadataPanel';
+import { useFileUpload } from '../hooks/useFileUpload';
+import { useToast } from '../context/ToastContext';
+import { uploadAudio, analyzeAudio, predictAudio } from '../services/api';
+import { 
+  getErrorMessage,
+  formatConfidence,
+  normalizePrediction
+} from '../services/apiHelpers';
+import { PredictionCardSkeleton } from '../components/PredictionCard';
 
-export default function Dashboard() {
-  const API_BASE_URL = useMemo(() => 'http://127.0.0.1:8000', []);
+import ErrorAlert from '../components/ErrorAlert';
+import PredictionCard from '../components/PredictionCard';
+import LoadingOverlay from '../components/LoadingOverlay';
 
-  const fileInputRef = useRef(null);
+const THEME_CLASSES = {
+  amber: {
+    border: 'border-cyber-border hover:border-cyber-border/40 bg-white/[0.01]',
+    dot: 'bg-amber-500',
+  },
+  cyan: {
+    border: 'border-cyber-border hover:border-cyber-border/40 bg-white/[0.01]',
+    dot: 'bg-cyber-cyan',
+  },
+  green: {
+    border: 'border-cyber-border hover:border-cyber-border/40 bg-white/[0.01]',
+    dot: 'bg-cyber-green',
+  },
+  rose: {
+    border: 'border-cyber-border hover:border-cyber-border/40 bg-white/[0.01]',
+    dot: 'bg-cyber-rose',
+  },
+  gray: {
+    border: 'border-cyber-border hover:border-cyber-border/40 bg-white/[0.01]',
+    dot: 'bg-zinc-600',
+  },
+};
 
-  const [scannerOnline, setScannerOnline] = useState(false);
-  const [scannerLoading, setScannerLoading] = useState(true);
+const getPipelineStatus = (stage, hasFile) => {
+  if (stage === 'completed') return { value: 'ANALYZED', theme: 'green' };
+  if (stage === 'failed') return { value: 'FAILED', theme: 'rose' };
+  if (stage === 'extracting' || stage === 'predicting') return { value: 'ANALYZING', theme: 'cyan' };
+  if (stage !== 'idle') return { value: stage.toUpperCase(), theme: 'cyan' };
+  if (hasFile) return { value: 'READY', theme: 'cyan' };
+  return { value: 'STANDBY', theme: 'gray' };
+};
 
-  const [_uploading, setUploading] = useState(false);
+const getScannerConfig = (status) => {
+  const config = {
+    checking: { value: 'Checking...', change: 'Probing backend', theme: 'amber' },
+    online: { value: 'Online', change: 'API reachable', theme: 'cyan' },
+    offline: { value: 'Offline', change: 'Awaiting backend', theme: 'rose' },
+  };
+  return config[status] || config.offline;
+};
 
+function Dashboard({ apiStatus = 'checking', backendVersion = null }) {
+  const fileUpload = useFileUpload();
+  const { file, error: pipelineError, handleFileChange, removeFile, setError: setPipelineError } = fileUpload;
+  const { addToast } = useToast();
+
+  // Pipeline execution stages: 'idle' | 'uploading' | 'extracting' | 'predicting' | 'completed' | 'failed'
+  const [stage, setStage] = useState('idle');
   const [pipelineMessage, setPipelineMessage] = useState('Awaiting Audio Upload');
-  const [errorMessage, setErrorMessage] = useState(null);
+  const [fileId, setFileId] = useState(null);
 
-  const [prediction, setPrediction] = useState(null);
-  const [confidence, setConfidence] = useState(null);
+  // Consolidated analysis results state
+  const [pipelineResult, setPipelineResult] = useState({
+    prediction: null,
+    confidence: null,
+    analysisInfo: null,
+    processingTime: null,
+    timestamp: null,
+  });
 
+  const { prediction, confidence, analysisInfo, processingTime, timestamp } = pipelineResult;
+
+  const isExecutingRef = useRef(false);
+  const abortControllerRef = useRef(null);
+  
+  // Scrolling target nodes
+  const timelineRef = useRef(null);
+  const resultsRef = useRef(null);
+
+  const apiStatusRef = useRef(apiStatus);
   useEffect(() => {
-    let cancelled = false;
+    apiStatusRef.current = apiStatus;
+  }, [apiStatus]);
 
-    async function ping() {
-      setScannerLoading(true);
-      try {
-        const res = await fetch(`${API_BASE_URL}/`, { method: 'GET' });
-        if (!res.ok) throw new Error(`Root ping failed: ${res.status}`);
-        if (!cancelled) setScannerOnline(true);
-      } catch {
-        if (!cancelled) setScannerOnline(false);
-      } finally {
-        if (!cancelled) setScannerLoading(false);
-      }
+  // Scroll to results when scan compiles successfully (waits 400ms to allow layout/rendering)
+  useEffect(() => {
+    if (stage === 'completed' && resultsRef.current) {
+      const scrollTimer = setTimeout(() => {
+        resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 400);
+      return () => clearTimeout(scrollTimer);
     }
+  }, [stage]);
 
-    ping();
-    return () => {
-      cancelled = true;
+  // Helper functions for state cleanup and initialization
+  const clearPredictionState = useCallback(() => {
+    setPipelineResult({
+      prediction: null,
+      confidence: null,
+      analysisInfo: null,
+      processingTime: null,
+      timestamp: null,
+    });
+  }, []);
+
+  const resetPipelineState = useCallback(() => {
+    setPipelineError(null);
+    clearPredictionState();
+    setFileId(null);
+  }, [setPipelineError, clearPredictionState]);
+
+  // Reset pipeline state when the selected file changes or is removed
+  useEffect(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    isExecutingRef.current = false;
+
+    const initializePipelineState = (message) => {
+      clearPredictionState();
+      setFileId(null);
+      setStage('idle');
+      setPipelineMessage(message);
     };
-  }, [API_BASE_URL]);
 
-  function validateFile(file) {
-    const maxBytes = 15 * 1024 * 1024;
-
-    if (!file) return 'No file provided.';
-    if (file.size > maxBytes) return 'File too large. Max 15MB.';
-
-    const nameLower = (file.name || '').toLowerCase();
-    if (!nameLower.endsWith('.wav') && !nameLower.endsWith('.mp3')) return 'Only WAV/MP3 are supported.';
-
-    return null;
-  }
-
-  async function uploadAndAnalyze(file) {
-    setUploading(true);
-    setErrorMessage(null);
-    setPipelineMessage('Uploading audio...');
-    setPrediction(null);
-    setConfidence(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const uploadRes = await fetch(`${API_BASE_URL}/api/upload/`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadRes.ok) {
-        const text = await uploadRes.text().catch(() => '');
-        throw new Error(`Upload failed (${uploadRes.status}): ${text || uploadRes.statusText}`);
-      }
-
-      const uploadJson = await uploadRes.json();
-      const filePath = uploadJson?.file_path;
-      if (!filePath) throw new Error('Upload succeeded but no file_path returned.');
-
-      setPipelineMessage('Running analysis (RIR + acoustic features)...');
-
-      const analysisRes = await fetch(`${API_BASE_URL}/api/analysis/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file_path: filePath }),
-      });
-
-      if (!analysisRes.ok) {
-        const text = await analysisRes.text().catch(() => '');
-        throw new Error(`Analysis failed (${analysisRes.status}): ${text || analysisRes.statusText}`);
-      }
-
-      await analysisRes.json();
-
-      setPipelineMessage('Running prediction (Deepfake classifier)...');
-
-      const predictRes = await fetch(`${API_BASE_URL}/api/predict/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file_path: filePath }),
-      });
-
-      if (!predictRes.ok) {
-        const text = await predictRes.text().catch(() => '');
-        throw new Error(`Prediction failed (${predictRes.status}): ${text || predictRes.statusText}`);
-      }
-
-      const predictJson = await predictRes.json();
-      setPrediction(predictJson?.prediction ?? null);
-      setConfidence(typeof predictJson?.confidence === 'number' ? predictJson.confidence : null);
-
-      setPipelineMessage('Scan completed successfully.');
-    } catch (e) {
-      setErrorMessage(e?.message || String(e));
-      setPipelineMessage('Scan failed.');
-    } finally {
-      setUploading(false);
+    setPipelineError(null); // Clear previous errors before new upload lifecycle starts
+    if (!file) {
+      initializePipelineState('Awaiting Audio Upload');
+    } else {
+      initializePipelineState('Payload loaded. Ready to run forensic analysis.');
     }
-  }
+  }, [file, setPipelineError, clearPredictionState]);
 
-  function onPickFile() {
-    fileInputRef.current?.click();
-  }
+  // Handle component unmount cleanup
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
-  async function handleFile(file) {
-    const err = validateFile(file);
-    if (err) {
-      setErrorMessage(err);
-      setPipelineMessage('Invalid file.');
+  const runPipeline = useCallback(async () => {
+    if (!file) return;
+
+    // Prevent duplicate requests
+    if (isExecutingRef.current) {
       return;
     }
-    await uploadAndAnalyze(file);
-  }
+    isExecutingRef.current = true;
 
-  function onDrop(e) {
-    e.preventDefault();
-    const file = e.dataTransfer?.files?.[0];
-    if (file) handleFile(file);
-  }
+    // Smooth scroll to timeline card immediately when analysis starts
+    setTimeout(() => {
+      if (timelineRef.current) {
+        timelineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
 
-  function onDragOver(e) {
-    e.preventDefault();
-  }
+    // Abort in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const signal = controller.signal;
 
-  const scannerValue = scannerLoading ? 'Checking...' : scannerOnline ? 'Online' : 'Offline';
-  const scannerChange = scannerLoading
-    ? 'Probing backend'
-    : scannerOnline
-      ? 'API reachable'
-      : 'Awaiting backend';
+    resetPipelineState();
+
+    const startTime = performance.now();
+
+    try {
+      // 1. Upload stage
+      setStage('uploading');
+      setPipelineMessage('Uploading audio payload to security gateway...');
+      addToast('Forensic analysis pipeline initialized', 'info');
+      const uploadResult = await uploadAudio(file, signal);
+      const fileIdVal = uploadResult.file_path || uploadResult.file_name || uploadResult.file_id;
+      setFileId(fileIdVal);
+      addToast('Audio upload complete. Decoding waveform features...', 'success');
+
+      // 2. Extraction stage
+      setStage('extracting');
+      setPipelineMessage('Decoding spatial indicators...');
+      await analyzeAudio(fileIdVal, signal);
+      addToast('Feature extraction complete. Running classification model...', 'info');
+
+      // 3. Predicting stage
+      setStage('predicting');
+      setPipelineMessage('Running deepfake classification weights...');
+      const predictRes = await predictAudio(fileIdVal, signal);
+      addToast('Classification complete. Verdict compiled successfully.', 'success');
+
+      const endTime = performance.now();
+      const elapsedSecs = ((endTime - startTime) / 1000).toFixed(2);
+
+      // Store returned objects in Dashboard state atomically
+      setPipelineResult({
+        prediction: predictRes.prediction,
+        confidence: predictRes.confidence !== undefined && predictRes.confidence !== null ? predictRes.confidence : null,
+        analysisInfo: predictRes.analysis || null,
+        processingTime: elapsedSecs,
+        timestamp: new Date().toLocaleString(),
+      });
+
+      setStage('completed');
+      setPipelineMessage(`Analysis completed in ${elapsedSecs}s.`);
+    } catch (err) {
+      if (err.name === 'AbortError' || (err.message && err.message.includes('aborted')) || signal.aborted) {
+        return;
+      }
+      console.error('Scan pipeline failure:', err);
+      setStage('failed');
+      setPipelineMessage('Scan pipeline failed.');
+      addToast('Scan pipeline execution failed', 'error');
+      
+      const readableMessage = getErrorMessage(err, apiStatusRef.current);
+      setPipelineError(readableMessage);
+    } finally {
+      if (abortControllerRef.current === controller) {
+        isExecutingRef.current = false;
+        abortControllerRef.current = null;
+      }
+    }
+  }, [file, setPipelineError, resetPipelineState, addToast]);
+
+  const isRunning = stage === 'uploading' || stage === 'extracting' || stage === 'predicting';
+
+  // Defensive Metrics Evaluation
+  const hasConfidence = confidence !== null && confidence !== undefined && !isNaN(Number(confidence));
+  const normPrediction = normalizePrediction(prediction);
+
+  const verificationValue = normPrediction ? normPrediction.toUpperCase() : 'Unavailable';
+  const verificationChange = (normPrediction && hasConfidence)
+    ? `Confidence: ${formatConfidence(confidence)}`
+    : 'Available after backend inference';
+  const verificationTheme = normPrediction === 'real' ? 'green' : normPrediction === 'fake' ? 'rose' : 'gray';
+
+  const pipelineStatus = getPipelineStatus(stage, !!file);
+  const scannerConfig = getScannerConfig(apiStatus);
+
+  const renderIntegrityScanCard = ({ isReady, content, footer }) => {
+    const shieldClass = isReady ? 'text-cyber-cyan' : 'text-text-secondary';
+    const titleClass = isReady ? 'text-text-primary' : 'text-text-secondary';
+    return (
+      <div className="bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl shadow-md h-full flex flex-col justify-between p-6 min-h-[420px] transition-all duration-300 animate-fadeIn delay-150">
+        <div className={isReady ? 'space-y-5' : 'space-y-6'}>
+          <div className="flex items-center gap-2.5 pb-4 border-b border-cyber-border/40">
+            <Shield className={shieldClass} size={15} />
+            <h2 className={`font-display font-semibold text-xs tracking-wide uppercase ${titleClass}`}>
+              Acoustic Integrity Scan
+            </h2>
+          </div>
+          {content}
+        </div>
+        {footer}
+      </div>
+    );
+  };
 
   return (
-
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn relative pb-4" aria-busy={isRunning}>
+      {/* Loading Overlay */}
+      <Suspense fallback={null}>
+        <LoadingOverlay stage={stage} error={pipelineError} />
+      </Suspense>
+ 
       {/* Page Header */}
-      <div>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-100">
+      <div className="animate-fadeIn delay-75">
+        <h1 className="text-3xl font-bold tracking-tight text-text-primary">
           Acoustic Analysis Console
         </h1>
-        <p className="text-sm text-slate-400 font-mono mt-1">
-          AcousticSpace isolator: de-noises RIR (Room Impulse Response) reflections & checks synthetic cadence boundaries.
+        <p className="text-xs text-text-secondary mt-2 font-normal tracking-wide leading-relaxed max-w-3xl">
+          AcousticSpace: De-noises room reflections (RIR) and analyzes speech cadence boundaries.
         </p>
       </div>
 
       {/* Metric Cards Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Analyses', value: '—', change: 'Offline mode', theme: 'gray' },
-          { label: 'Deepfakes Flagged', value: '—', change: 'Offline mode', theme: 'gray' },
-          { label: 'Classification F1', value: '98.4%', change: 'AST-v2 model spec', theme: 'cyan' },
-          { label: 'Scanner Status', value: scannerValue, change: scannerChange, theme: scannerOnline ? 'cyan' : 'amber' }
-
-        ].map((m, idx) => (
-          <div 
-            key={idx} 
-            className="p-6 bg-cyber-dark rounded-xl border border-cyber-border transition-all hover:border-cyber-cyan/10"
-          >
-
-            <span className="text-xs font-mono text-slate-500 uppercase tracking-widest block">
-              {m.label}
-            </span>
-            <span className="text-2xl font-display font-bold text-slate-100 mt-2 block">
-              {m.value}
-            </span>
-            <div className="flex items-center gap-1.5 mt-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${
-                m.theme === 'amber' ? 'bg-amber-500' : m.theme === 'cyan' ? 'bg-cyber-cyan' : 'bg-slate-600'
-              }`}></div>
-              <span className="text-[11px] font-mono text-slate-400">
-                {m.change}
-              </span>
+          { label: 'Pipeline State', value: pipelineStatus.value, change: pipelineMessage, theme: pipelineStatus.theme },
+          { 
+            label: 'Verification', 
+            value: verificationValue, 
+            change: verificationChange, 
+            theme: verificationTheme 
+          },
+          { 
+            label: 'Model Status', 
+            value: apiStatus === 'online' ? 'READY' : 'Unavailable', 
+            change: apiStatus === 'online' ? `System version: ${backendVersion || '1.0.0'}` : 'Awaiting backend connection', 
+            theme: apiStatus === 'online' ? 'green' : 'gray' 
+          },
+          { label: 'Scanner Status', value: scannerConfig.value, change: scannerConfig.change, theme: scannerConfig.theme }
+        ].map((m, idx) => {
+          const themeConfig = THEME_CLASSES[m.theme] || THEME_CLASSES.gray;
+          const delayClass = idx === 0 ? 'delay-75' : idx === 1 ? 'delay-100' : idx === 2 ? 'delay-150' : 'delay-200';
+          return (
+            <div 
+              key={idx} 
+              className={`p-5 bg-cyber-dark backdrop-blur-xl rounded-2xl border min-h-[120px] flex flex-col justify-between hover-lift shadow-sm animate-fadeIn ${delayClass} ${themeConfig.border}`}
+            >
+              <div>
+                <span className="text-[10px] font-mono font-semibold text-text-secondary uppercase tracking-wider block">
+                  {m.label}
+                </span>
+                <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 block">
+                  {m.value}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-4 pt-2.5 border-t border-cyber-border/40">
+                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${themeConfig.dot} animate-pulse`}></div>
+                <span className="text-[10px] text-text-secondary truncate font-normal leading-none" title={m.change}>
+                  {m.change}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       {/* Main Grid: Upload & Waveform (Left), Report Status (Right) */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column: Upload Dropzone & Waveform visualizer */}
-        <div className="xl:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-8">
           
-          {/* Static Audio Upload Card */}
-          <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden">
-            <div className="p-6 border-b border-cyber-border flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UploadCloud className="text-cyber-cyan" size={18} />
-                <h2 className="font-display font-semibold text-slate-200">
-                  Audio Upload Portal
-                </h2>
-              </div>
-              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                File Vault Gateway
-              </span>
-            </div>
+          {/* Audio Upload Portal */}
+          <AudioUpload 
+            file={file}
+            handleFileChange={handleFileChange}
+            removeFile={removeFile}
+            uploading={isRunning}
+            fileId={fileId}
+            onAnalyze={runPipeline}
+            stage={stage}
+          />
 
-            <div className="p-8">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".wav,.mp3,audio/wav,audio/mpeg"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFile(file);
-                }}
-              />
-
-              {/* Drag and Drop Box */}
-              <div
-                className="border border-dashed border-slate-700/60 rounded-xl bg-slate-950/30 p-10 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-cyber-cyan/40 hover:bg-slate-950/50 transition-all duration-300"
-                onClick={onPickFile}
-                onDrop={onDrop}
-                onDragOver={onDragOver}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') onPickFile();
-                }}
-              >
-
-                <div className="p-4 rounded-full bg-cyber-cyan-glow text-cyber-cyan border border-cyber-cyan/10 mb-4 group-hover:scale-105 transition-transform duration-300">
-                  <UploadCloud size={32} />
-                </div>
-                <h3 className="font-display font-semibold text-slate-200 text-sm">
-                  Drag and drop audio file here
-                </h3>
-                <p className="text-xs text-slate-400 mt-1 max-w-xs font-mono">
-                  or browse your local filesystem
-                </p>
-
-                {errorMessage ? (
-                  <div className="mt-3 text-[11px] text-rose-300 font-mono max-w-[220px]">
-                    {errorMessage}
-                  </div>
-                ) : null}
-
-                {pipelineMessage ? (
-                  <div className="mt-2 text-[11px] text-slate-400 font-mono">
-                    {pipelineMessage}
-                  </div>
-                ) : null}
-
-                <div className="mt-4 flex items-center gap-2 text-[10px] text-slate-500 font-mono border border-cyber-border bg-slate-950/80 px-2 py-1 rounded">
-                  <span>WAV, MP3 formats</span>
-                  <span className="w-1 h-1 rounded-full bg-slate-800"></span>
-                  <span>Max 15MB</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Static Waveform Visualizer Placeholder */}
-          <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden">
-            <div className="p-6 border-b border-cyber-border flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity className="text-cyber-cyan" size={18} />
-                <h2 className="font-display font-semibold text-slate-200">
-                  Spectral Waveform Analyzer
-                </h2>
-              </div>
-              <span className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-                STANDBY
-              </span>
-            </div>
-
-            <div className="p-8 bg-slate-950/50 relative overflow-hidden flex items-center justify-center min-h-[160px]">
-              {/* Static Waveform Mock (Muted Mapped Bars) */}
-              <svg className="w-full h-32 text-slate-800/25" viewBox="0 0 400 100" preserveAspectRatio="none">
-                {[...Array(60)].map((_, i) => {
-                  const x = 5 + i * 6.5;
-                  const height = 15 + Math.sin(x * 0.05) * 8; // Muted flat waveform
-                  const y = 50 - height / 2;
-                  
-                  return (
-                    <rect
-                      key={i}
-                      x={x}
-                      y={y}
-                      width="3"
-                      height={height}
-                      rx="1.5"
-                      className="fill-slate-800/40"
-                    />
-                  );
-                })}
-              </svg>
-
-              {/* Watermark Centered Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest border border-slate-800 bg-slate-950 px-3 py-1.5 rounded">
-                  Awaiting Audio Upload
-                </p>
-              </div>
-            </div>
-          </div>
-
+          {/* Dynamic Waveform Viewer */}
+          <WaveformViewer file={file} />
         </div>
 
-        {/* Right Column: Acoustic Integrity Report Placeholder */}
-        <div className="space-y-8">
-          
-          <div className="bg-cyber-dark rounded-xl border border-cyber-border overflow-hidden h-full flex flex-col">
-            <div className="p-6 border-b border-cyber-border flex items-center gap-2">
-              <Shield className="text-cyber-cyan" size={18} />
-              <h2 className="font-display font-semibold text-slate-200">
-                Acoustic Integrity Report
-              </h2>
+        {/* Right Column: Acoustic Integrity Report */}
+        <div ref={timelineRef} className="space-y-6 animate-fadeIn delay-100">
+          {/* Error Alert Display */}
+          {pipelineError && (
+            <Suspense fallback={null}>
+              <ErrorAlert 
+                message={pipelineError} 
+                onRetry={runPipeline} 
+                title="Pipeline Execution Error"
+              />
+            </Suspense>
+          )}
+
+          {stage === 'completed' && prediction && file ? (
+            /* Premium Prediction Result Card displaying only returned fields */
+            <div ref={resultsRef} className="animate-fadeIn">
+              <Suspense fallback={<PredictionCardSkeleton />}>
+                <PredictionCard 
+                  prediction={prediction}
+                  confidence={confidence}
+                  filename={file.name}
+                  timestamp={timestamp}
+                  processingTime={processingTime}
+                  analysis={analysisInfo}
+                />
+              </Suspense>
             </div>
-
-            <div className="p-6 flex-1 flex flex-col justify-between min-h-[400px]">
-              
-              {/* Standby Interface */}
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800 bg-slate-950/20 rounded-lg">
-                <div className="p-3 bg-slate-950 border border-cyber-border/40 text-slate-500 rounded-lg mb-4">
-                  <FileAudio size={32} />
+          ) : isRunning ? (
+            /* Detailed Forensic Progress Timeline during active execution */
+            renderIntegrityScanCard({
+              isReady: true,
+              content: (
+                <TimelineProgress stage={stage} error={pipelineError} />
+              ),
+              footer: (
+                <div className="pt-4 border-t border-cyber-border/40 text-[9px] text-center text-text-secondary tracking-widest font-mono uppercase">
+                  ANALYSIS RUNNING...
                 </div>
-                <h3 className="font-semibold text-slate-400 text-sm">
-                  {prediction ? `Result: ${prediction}` : 'Scan Pipeline Ready'}
-                </h3>
-                <p className="text-xs text-slate-500 max-w-[200px] mt-2 leading-relaxed">
-                  {prediction
-                    ? `Confidence: ${confidence !== null ? `${(confidence * 100).toFixed(1)}%` : '—'}`
-                    : 'Provide an audio file to run Room Impulse Response reflections analysis.'}
-                </p>
-
-              </div>
-
-              {/* Muted Placeholder Metrics */}
-              <div className="space-y-4 pt-6 border-t border-cyber-border/40 mt-6">
-                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                  <Info size={12} />
-                  <span>Expected Diagnostic Scores</span>
+              )
+            })
+          ) : file ? (
+            /* Ready to Scan State */
+            renderIntegrityScanCard({
+              isReady: true,
+              content: (
+                <div className="space-y-5">
+                  <div className="p-5 bg-white/[0.01] border border-cyber-border/40 rounded-xl flex flex-col items-center justify-center text-center space-y-4 py-6">
+                    <div className="p-3 bg-white/5 border border-cyber-border/60 text-text-primary rounded-full shadow-sm animate-pulse">
+                      <FileAudio size={24} className="text-cyber-cyan" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider font-mono">
+                         Acoustic Payload Loaded
+                      </h3>
+                      <p className="text-[10px] text-text-secondary font-normal mt-1.5 max-w-xs leading-normal">
+                        File details verified. Local audio waveform decoded successfully.
+                      </p>
+                    </div>
+                  </div>
+                  <TimelineProgress stage={stage} error={pipelineError} />
                 </div>
-                
-                {/* Metric Item 1 */}
-                <div className="space-y-1.5 opacity-55">
-                  <div className="flex justify-between text-xs font-mono text-slate-500">
-                    <span>RIR Echo Wall Coherence</span>
-                    <span>— %</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-900">
-                    <div className="h-full bg-slate-800 rounded-full w-0"></div>
-                  </div>
+              ),
+              footer: (
+                <div className="pt-4 border-t border-cyber-border/40 text-[9px] text-center text-text-secondary tracking-widest font-mono uppercase">
+                  AWAITING SCAN TRIGGER
                 </div>
-
-                {/* Metric Item 2 */}
-                <div className="space-y-1.5 opacity-55">
-                  <div className="flex justify-between text-xs font-mono text-slate-500">
-                    <span>Respiratory Coherence</span>
-                    <span>— %</span>
+              ),
+            })
+          ) : (
+            /* Standby Card State - Polished Checklist Placeholder Panel */
+            renderIntegrityScanCard({
+              isReady: false,
+              content: (
+                <div className="space-y-5">
+                  {/* Status Indicator */}
+                  <div className="flex items-center gap-2 px-2.5 py-1 bg-white/5 border border-cyber-border/40 rounded-md w-fit">
+                    <div className="h-1.5 w-1.5 rounded-full bg-zinc-500 animate-pulse"></div>
+                    <span className="text-[9px] text-text-secondary uppercase tracking-wider font-semibold font-mono">
+                      Awaiting Analysis
+                    </span>
                   </div>
-                  <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-900">
-                    <div className="h-full bg-slate-800 rounded-full w-0"></div>
-                  </div>
+                  <TimelineProgress stage="idle" />
                 </div>
-              </div>
+              ),
+              footer: (
+                <div className="pt-4 border-t border-cyber-border/40 text-[9px] text-center text-text-secondary tracking-widest font-mono uppercase">
+                  SECURED NODE CHANNEL
+                </div>
+              ),
+            })
+          )}
 
-              {/* Status Footer */}
-              <div className="mt-8 pt-4 border-t border-cyber-border text-[10px] font-mono text-slate-600 flex items-center justify-between">
-                <span>AST CLASSIFIER MODEL</span>
-                <span className="text-slate-600 font-semibold">NOT LOADED</span>
-              </div>
-
-            </div>
-          </div>
-
+          {/* Technical Metadata Panel */}
+          <AudioMetadataPanel file={file} />
         </div>
 
       </div>
     </div>
   );
 }
+
+export default React.memo(Dashboard);
+
