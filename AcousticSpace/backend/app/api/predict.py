@@ -19,7 +19,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from app.api.schemas import PredictionResponse
-from app.core.logger import log_error, log_info
+from app.core.config import settings
+from app.core.logger import log_error, log_info, log_warning
 from app.database.db import get_db
 from app.database.models import History
 from app.services.audio_loader import load_audio
@@ -32,6 +33,62 @@ from app.services.preprocessing import preprocess_audio
 from app.services.rir_extractor import extract_rir_features
 
 router = APIRouter()
+
+
+# ----------------------------------------------------
+# Lazy Model Loading (Singleton Pattern)
+# ----------------------------------------------------
+async def ensure_model_loaded(app):
+    """
+    Lazy-load AST model on first prediction request.
+    Uses singleton pattern - model loads once and is cached in app.state.
+    
+    Parameters
+    ----------
+    app : FastAPI
+        The FastAPI application instance.
+    
+    Returns
+    -------
+    bool
+        True if model is ready, False if using mock predictions.
+    """
+    # If model is already loaded or loading, return current status
+    if app.state.model_ready:
+        return True
+    
+    # If model is currently loading, wait and return
+    if app.state.model_loading:
+        return False
+    
+    # Mark as loading to prevent concurrent loads
+    app.state.model_loading = True
+    
+    try:
+        import torch
+        from transformers import ASTForAudioClassification, ASTFeatureExtractor
+        
+        model_path = settings.AST_MODEL_PATH
+        log_info(f"Loading AST model from {model_path}...")
+        
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        app.state.ast_model = ASTForAudioClassification.from_pretrained(model_path).to(device)
+        app.state.ast_model.eval()
+        app.state.feature_extractor = ASTFeatureExtractor.from_pretrained(model_path)
+        app.state.model_ready = True
+        
+        log_info(f"✓ AST model loaded successfully on {device}")
+        return True
+        
+    except Exception as e:
+        log_warning(f"Failed to load AST model: {e}. Using mock predictions.")
+        app.state.ast_model = None
+        app.state.feature_extractor = None
+        app.state.model_ready = False
+        return False
+    
+    finally:
+        app.state.model_loading = False
 
 
 class PredictionRequestModel(BaseModel):
@@ -82,12 +139,15 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
         t_cadence = time.perf_counter() - t0
         log_info(f"Cadence alignment analysis completed in {t_cadence:.2f}s")
 
-        # Step 6: Generate prediction (real AST model or mock)
+        # Step 6: Lazy-load model if needed and generate prediction
         t0 = time.perf_counter()
         processing_time_so_far = time.perf_counter() - start
         
+        # Lazy-load model on first request
+        model_ready = await ensure_model_loaded(req.app)
+        
         # Check if real model is available
-        if req.app.state.model_ready and req.app.state.ast_model is not None:
+        if model_ready and req.app.state.ast_model is not None:
             # Use real AST model inference
             import librosa
             import torch
