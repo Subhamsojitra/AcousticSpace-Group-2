@@ -169,12 +169,7 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header Panel */}
         <header className="h-14 bg-cyber-dark backdrop-blur-xl border-b border-cyber-border flex items-center justify-between px-8 z-10">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyber-cyan animate-pulse"></div>
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
-              Secured Node Channel 09
-            </span>
-          </div>
+          <div></div>
 
           <div className="flex items-center gap-4">
             {/* Animated Theme Toggle Button */}
