@@ -931,3 +931,35 @@ Conducted a targeted performance optimization pass across key components in the 
 - Conducted full browser subagent automated testing validating page load, theme toggle responsiveness, search filtering typing speed, waveform drag and panning frames, and end-to-end payload scanning.
 
 ## Day 21 completed
+
+## Day 22 – UX Cleanup & Analysis Flow Simplification (1 August 2026)
+
+### Overview
+Simplified the forensic analysis execution workflow by removing duplicate loading UI overlays, disabling backdrop blur in active state overlays, implementing auto-scrolling pipeline navigation, locking all upload interactions during active inference, and removing non-functional decorative text to optimize the production interface structure.
+
+### Work Completed
+- **Removed Duplicated Loading Dialog & Backdrop Blur:**
+  - Excised the floating "Forensic Scan" popup dialog inside [LoadingOverlay.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/LoadingOverlay.jsx).
+  - Kept only a subtle translucent click-blocking overlay (`bg-cyber-black/15`) with all backdrop blur removed to prevent interactions and duplicate requests without blurring dashboard content or reducing timeline readability.
+- **Implemented Automatic Timeline Navigation:**
+  - Configured immediate smooth scrolling (50ms delay) to the right-hand forensic timeline column in [Dashboard.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/Dashboard.jsx) upon clicking "Analyze Audio Payload".
+  - Configured automatic smooth scrolling return (400ms delay) to the prediction result card upon pipeline completion to guide the user's focus seamlessly.
+  - Bypassed automatic scroll back on scan failures to allow the user to view the error fallback alerts naturally.
+- **Locked Upload Interactions During Active Inference:**
+  - Updated [AudioUpload.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/AudioUpload.jsx) drag-over handlers to show a disabled cursor drop effect when an analysis pipeline run is active.
+  - Added short-circuit guards to the file removal handler to block `handleRemoveClick` actions when a scan is in progress.
+  - Ensured browse local filesystem triggers and primary action buttons are locked during the active inference lifecycle.
+- **Cleaned Decorative Elements:**
+  - Removed the non-functional "Secured Node Channel 09" indicator and its status dot from [DashboardLayout.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/layouts/DashboardLayout.jsx), allowing the top header layout more room to breathe.
+
+### Files Modified
+- [LoadingOverlay.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/LoadingOverlay.jsx)
+- [AudioUpload.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/AudioUpload.jsx)
+- [DashboardLayout.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/layouts/DashboardLayout.jsx)
+- [Dashboard.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/Dashboard.jsx)
+
+### Testing Performed
+- Ran `npm run lint` and verified that syntax validation passes.
+- Ran `npm run build` to confirm the production build bundles correctly.
+
+## Day 22 completed

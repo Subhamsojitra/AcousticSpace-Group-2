@@ -16,6 +16,9 @@ function AudioUpload({
 
   const handleDragOver = (e) => {
     e.preventDefault();
+    if (uploading) {
+      e.dataTransfer.dropEffect = 'none';
+    }
   };
 
   const handleDragEnter = (e) => {
@@ -54,6 +57,7 @@ function AudioUpload({
   };
 
   const handleRemoveClick = () => {
+    if (uploading) return;
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }

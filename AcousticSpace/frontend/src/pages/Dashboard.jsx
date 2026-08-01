@@ -95,12 +95,12 @@ function Dashboard({ apiStatus = 'checking', backendVersion = null }) {
     apiStatusRef.current = apiStatus;
   }, [apiStatus]);
 
-  // Scroll to results when scan compiles successfully
+  // Scroll to results when scan compiles successfully (waits 400ms to allow layout/rendering)
   useEffect(() => {
     if (stage === 'completed' && resultsRef.current) {
       const scrollTimer = setTimeout(() => {
         resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 150);
+      }, 400);
       return () => clearTimeout(scrollTimer);
     }
   }, [stage]);
@@ -163,12 +163,12 @@ function Dashboard({ apiStatus = 'checking', backendVersion = null }) {
     }
     isExecutingRef.current = true;
 
-    // Smooth scroll to timeline card when analysis starts
+    // Smooth scroll to timeline card immediately when analysis starts
     setTimeout(() => {
       if (timelineRef.current) {
         timelineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-    }, 100);
+    }, 50);
 
     // Abort in-flight request
     if (abortControllerRef.current) {
