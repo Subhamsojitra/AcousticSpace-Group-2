@@ -42,6 +42,15 @@ class Settings(BaseSettings):
     # Can be absolute path or relative to BASE_DIR
     # In Docker, mount the model as a volume and set this to /app/results/ast_final_model
     AST_MODEL_PATH: str = ""
+    
+    # Model device: cuda, mps, cpu (auto-detected if not set)
+    MODEL_DEVICE: str = ""
+    
+    # Model name for logging and identification
+    MODEL_NAME: str = "AST"
+    
+    # Model cache directory for Hugging Face
+    MODEL_CACHE_DIR: str = ""
 
     # -----------------------------------
     # Database

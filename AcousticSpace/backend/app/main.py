@@ -101,11 +101,36 @@ app.add_middleware(ExceptionLoggingMiddleware)
 # -----------------------------
 @app.get("/", tags=["Health"])
 async def health_check():
+    """Enhanced health check endpoint with model status."""
+    
+    # Get model information if available
+    model_info = {
+        "model_loaded": False,
+        "device": "none",
+        "model": "none",
+        "lazy_loading": True,
+    }
+    
+    try:
+        from app.ml.model_loader import get_model_loader
+        model_loader = get_model_loader()
+        model_info = {
+            "model_loaded": model_loader.is_loaded(),
+            "device": str(model_loader.get_device()) if model_loader.get_device() else "none",
+            "model": settings.MODEL_NAME,
+            "lazy_loading": True,
+            "load_time_seconds": model_loader.get_load_time(),
+        }
+    except Exception as e:
+        # Model loader not initialized yet or failed
+        model_info["error"] = str(e)
+    
     return {
         "status": "running",
         "project": "AcousticSpace",
         "version": settings.APP_VERSION,
         "message": "Backend is running successfully.",
+        **model_info
     }
 
 
