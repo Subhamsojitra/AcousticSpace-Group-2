@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Info, Disc, Clock, Activity, HardDrive, Cpu } from 'lucide-react';
 import { formatFileSize } from '../utils/fileValidation';
 
-function AudioMetadataPanel({ file }) {
+function AudioMetadataPanel({ file, onMetadataLoaded }) {
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!file) {
       setMeta(null);
+      if (onMetadataLoaded) {
+        onMetadataLoaded(null);
+      }
       return;
     }
 
@@ -26,11 +29,15 @@ function AudioMetadataPanel({ file }) {
         try {
           const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
           if (active) {
-            setMeta({
+            const parsedMeta = {
               duration: audioBuffer.duration,
               sampleRate: audioBuffer.sampleRate,
               channels: audioBuffer.numberOfChannels,
-            });
+            };
+            setMeta(parsedMeta);
+            if (onMetadataLoaded) {
+              onMetadataLoaded(parsedMeta);
+            }
           }
         } catch (e) {
           console.warn('Audio metadata parsing failed', e);
@@ -51,7 +58,7 @@ function AudioMetadataPanel({ file }) {
     return () => {
       active = false;
     };
-  }, [file]);
+  }, [file, onMetadataLoaded]);
 
   if (!file) {
     return (

@@ -963,3 +963,36 @@ Simplified the forensic analysis execution workflow by removing duplicate loadin
 - Ran `npm run build` to confirm the production build bundles correctly.
 
 ## Day 22 completed
+
+## Day 24 – Frontend PDF Report Generation System (2 August 2026)
+
+### Overview
+Designed and implemented a professional, client-side PDF forensic report generation system. The report compiles prediction results, audio file specifications, neural classifier parameters, and diagnostic system indicators into a high-fidelity tabular PDF document entirely on the frontend, using a modular and decoupled architecture.
+
+### Work Completed
+- **Decoupled PDF Generation Utility:**
+  - Created [reportGenerator.js](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/utils/reportGenerator.js) inside the `src/utils` directory.
+  - Implemented the utility completely free of React and UI component dependencies. It accepts a normalized `reportData` object and outputs a tailored forensic report PDF.
+  - Utilized `jsPDF` for layout control, using coordinate mapping to align grids, lines, color palettes, and typographic scales perfectly on a single A4 page.
+- **Audio Specification Bridging:**
+  - Updated [AudioMetadataPanel.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/AudioMetadataPanel.jsx) to take an optional `onMetadataLoaded` callback.
+  - Shared the decoded channel counts (Mono vs Stereo) with [Dashboard.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/Dashboard.jsx) without duplicate array decoding or heavy browser resources, maintaining the performance optimizations introduced on Day 21.
+- **Console Dashboard Integration:**
+  - Added a "Download Forensic Report" button directly below the active prediction result card, above the hardware metadata panel.
+  - Kept the button always visible but disabled until the pipeline transitions to the `completed` state with valid verdict outputs.
+  - Integrated toast notifications ("Generating forensic PDF report...", "Forensic report downloaded successfully.") to track PDF compilation and file downloads.
+- **Fail-safe Data Rendering:**
+  - Normalized all report keys using fallback values (`"Unavailable"`), ensuring the document continues generating successfully even if optional parameters (e.g., backend version, model version, timestamps, or RIR sub-scores) are missing.
+  - Included a unique forensic Report ID (`AS-[timestamp]-[random]`) and document creation time on the report header.
+
+### Files Created / Modified
+- [reportGenerator.js](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/utils/reportGenerator.js) [NEW]
+- [AudioMetadataPanel.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/components/AudioMetadataPanel.jsx) [MODIFY]
+- [Dashboard.jsx](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/AcousticSpace/frontend/src/pages/Dashboard.jsx) [MODIFY]
+- [FRONTEND_DEVELOPMENT_LOG.md](file:///c:/Users/Shubh/Desktop/AcousticSpace%20Frontend/FRONTEND_DEVELOPMENT_LOG.md) [MODIFY]
+
+### Testing Performed
+- Ran `npm run lint` and resolved all dependencies warnings (validated zero syntax/hook errors).
+- Ran `npm run build` to confirm production bundling succeeds (compiled package bundle in **1.44s**).
+
+## Day 24 completed
