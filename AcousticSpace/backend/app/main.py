@@ -32,6 +32,11 @@ async def lifespan(app: FastAPI):
     from pathlib import Path
     for p in [settings.UPLOAD_DIR, settings.FEATURE_DIR, settings.MODEL_DIR, settings.LOG_DIR]:
         Path(p).mkdir(parents=True, exist_ok=True)
+    
+    # Ensure database directory exists
+    db_path = Path(settings.DATABASE_URL.replace("sqlite:///", ""))
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    
     t_folders = time.perf_counter() - t0
     logger.info(f"✓ Runtime folders ensured in {t_folders:.3f}s")
 
