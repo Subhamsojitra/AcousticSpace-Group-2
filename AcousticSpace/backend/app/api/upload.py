@@ -25,7 +25,7 @@ async def upload_audio(file: UploadFile = File(...)) -> UploadResponse:
         raise HTTPException(status_code=400, detail="Missing filename.")
 
     original_name = file.filename
-    if not allowed_extension(original_name):
+    if not allowed_extension(original_name, content_type=file.content_type):
         ext = Path(original_name).suffix.lower()
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 

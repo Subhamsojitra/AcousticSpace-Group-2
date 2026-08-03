@@ -47,13 +47,30 @@ async def lifespan(app: FastAPI):
     logger.info(f"✓ Database tables initialized in {t_db:.3f}s")
 
     # Step 3: Initialize app state for ML model integration
-    # NOTE: Model loading is now LAZY - happens on first prediction request
+    # NOTE: Model loading is now LAZY - happens on first prediction/analysis request
     app.state.cnn_model = None
     app.state.ast_model = None
     app.state.feature_extractor = None
     app.state.model_ready = False
     app.state.model_loading = False
-    logger.info("✓ App state initialized (model will load on first prediction)")
+    logger.info("✓ App state initialized (model will load on first prediction/analysis request)")
+    
+    # Step 3b: Log AST model configuration
+    logger.info("=" * 60)
+    logger.info("AST Model Configuration:")
+    logger.info(f"  Model path: {settings.AST_MODEL_PATH}")
+    ast_model_path = Path(settings.AST_MODEL_PATH)
+    if ast_model_path.exists():
+        logger.info(f"  ✓ Model directory exists")
+        if ast_model_path.is_dir():
+            logger.info(f"  ✓ Path is a directory")
+            files = list(ast_model_path.iterdir())
+            logger.info(f"  Files found: {[f.name for f in files]}")
+        else:
+            logger.warning(f"  ✗ Path is not a directory!")
+    else:
+        logger.warning(f"  ✗ Model directory does NOT exist!")
+    logger.info("=" * 60)
 
     total_startup = time.perf_counter() - startup_start
     logger.info("=" * 60)

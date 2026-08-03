@@ -29,6 +29,9 @@ from app.services.feature_extractor import extract_features
 from app.services.preprocessing import preprocess_audio
 from app.services.rir_extractor import extract_rir_features
 
+# Lazy model loading
+from app.ml.model_loader import get_model_loader, ModelLoadError
+
 router = APIRouter()
 
 
@@ -53,6 +56,24 @@ async def analyze_audio(
     log_info(f"Analysis request received for: {request.file_path}")
 
     try:
+        # Step 0: Lazy-load AST model on first analysis request
+        log_info("Checking if AST model needs to be loaded...")
+        try:
+            model_loader = get_model_loader()
+            if not model_loader.is_loaded():
+                log_info("AST model not loaded. Loading now...")
+                success, message = model_loader.load_model()
+                if success:
+                    log_info(f"✓ AST model loaded successfully: {message}")
+                else:
+                    log_warning(f"AST model loading returned false: {message}")
+            else:
+                log_info("✓ AST model already loaded")
+        except ModelLoadError as e:
+            log_warning(f"Failed to load AST model: {e}. Analysis will continue without ML model.")
+        except Exception as e:
+            log_warning(f"Unexpected error loading AST model: {e}. Analysis will continue without ML model.")
+        
         # Step 1: Load audio
         t0 = time.perf_counter()
         audio, sample_rate = load_audio(request.file_path)

@@ -6,7 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """
     Application Configuration
-    All paths can be overridden via environment variables for Docker deployments.
     """
 
     # -----------------------------------
@@ -29,7 +28,6 @@ class Settings(BaseSettings):
     BASE_DIR: Path = Path(__file__).resolve().parents[2]
 
     # These paths can be absolute or relative to BASE_DIR
-    # In Docker, they will typically be absolute paths like /app/uploads
     UPLOAD_DIR: str = "backend/uploads"
     FEATURE_DIR: str = "backend/extracted_features"
     MODEL_DIR: str = "backend/saved_models"
@@ -40,7 +38,6 @@ class Settings(BaseSettings):
     # -----------------------------------
     # Path to the trained AST model directory
     # Can be absolute path or relative to BASE_DIR
-    # In Docker, mount the model as a volume and set this to /app/results/ast_final_model
     AST_MODEL_PATH: str = ""
     
     # Model device: cuda, mps, cpu (auto-detected if not set)
@@ -82,8 +79,9 @@ class Settings(BaseSettings):
         super().__init__(**kwargs)
         # If AST_MODEL_PATH is not set via environment, compute default path
         if not self.AST_MODEL_PATH:
-            # Default: results/ast_final_model relative to BASE_DIR
-            self.AST_MODEL_PATH = str(self.BASE_DIR / "results" / "ast_final_model")
+            # Default: results/ast_final_model relative to project root
+            # BASE_DIR is AcousticSpace/backend, so go up one level to AcousticSpace
+            self.AST_MODEL_PATH = str(self.BASE_DIR.parent / "results" / "ast_final_model")
 
 
 settings = Settings()

@@ -25,7 +25,7 @@ class AudioValidationError(Exception):
     pass
 
 
-def validate_audio_file(file_path: str) -> Tuple[bool, Dict]:
+def validate_audio_file(file_path: str, content_type: str | None = None) -> Tuple[bool, Dict]:
     """
     Validate an audio file before processing.
     
@@ -33,6 +33,8 @@ def validate_audio_file(file_path: str) -> Tuple[bool, Dict]:
     ----------
     file_path : str
         Path to the audio file.
+    content_type : str, optional
+        MIME type reported by the client/browser.
     
     Returns
     -------
@@ -75,12 +77,28 @@ def validate_audio_file(file_path: str) -> Tuple[bool, Dict]:
         validation_info["error"] = "Audio file is empty (0 bytes)"
         return False, validation_info
     
-    # Check file extension
-    file_ext = Path(file_path).suffix.lower().lstrip('.')
+    # Check file extension (keep the dot for consistency with config)
+    file_ext = Path(file_path).suffix.lower()
     allowed_extensions = [ext.strip().lower() for ext in settings.ALLOWED_EXTENSIONS.split(',')]
     
-    if file_ext not in allowed_extensions:
-        validation_info["error"] = f"Unsupported audio format: {file_ext}. Allowed: {', '.join(allowed_extensions)}"
+    # Normalize allowed extensions to include dot
+    allowed_extensions_normalized = []
+    for ext in allowed_extensions:
+        if not ext.startswith('.'):
+            ext = f'.{ext}'
+        allowed_extensions_normalized.append(ext)
+    
+    if file_ext not in allowed_extensions_normalized:
+        # Enhanced error logging
+        log_error(
+            f"Unsupported audio format validation failed:\n"
+            f"  Filename: {Path(file_path).name}\n"
+            f"  Extension: {file_ext}\n"
+            f"  Suffix: {Path(file_path).suffix}\n"
+            f"  Content-Type: {content_type}\n"
+            f"  Allowed extensions: {allowed_extensions_normalized}"
+        )
+        validation_info["error"] = f"Unsupported audio format: {file_ext}. Allowed: {', '.join(allowed_extensions_normalized)}"
         return False, validation_info
     
     validation_info["format_valid"] = True
@@ -173,7 +191,7 @@ def validate_audio_duration(file_path: str, min_duration: float = 1.0, max_durat
         raise AudioValidationError(f"Failed to validate audio duration: {str(e)}")
 
 
-def validate_audio_format(file_path: str) -> Tuple[bool, str]:
+def validate_audio_format(file_path: str, content_type: str | None = None) -> Tuple[bool, str]:
     """
     Validate audio file format.
     
@@ -181,17 +199,35 @@ def validate_audio_format(file_path: str) -> Tuple[bool, str]:
     ----------
     file_path : str
         Path to the audio file.
+    content_type : str, optional
+        MIME type reported by the client/browser.
     
     Returns
     -------
     Tuple[bool, str]
         (is_valid, format_or_error)
     """
-    file_ext = Path(file_path).suffix.lower().lstrip('.')
+    file_ext = Path(file_path).suffix.lower()
     allowed_extensions = [ext.strip().lower() for ext in settings.ALLOWED_EXTENSIONS.split(',')]
     
-    if file_ext not in allowed_extensions:
-        return False, f"Unsupported format: {file_ext}. Allowed: {', '.join(allowed_extensions)}"
+    # Normalize allowed extensions to include dot
+    allowed_extensions_normalized = []
+    for ext in allowed_extensions:
+        if not ext.startswith('.'):
+            ext = f'.{ext}'
+        allowed_extensions_normalized.append(ext)
+    
+    if file_ext not in allowed_extensions_normalized:
+        # Enhanced error logging
+        log_error(
+            f"Unsupported audio format validation failed:\n"
+            f"  Filename: {Path(file_path).name}\n"
+            f"  Extension: {file_ext}\n"
+            f"  Suffix: {Path(file_path).suffix}\n"
+            f"  Content-Type: {content_type}\n"
+            f"  Allowed extensions: {allowed_extensions_normalized}"
+        )
+        return False, f"Unsupported format: {file_ext}. Allowed: {', '.join(allowed_extensions_normalized)}"
     
     return True, file_ext
 
@@ -216,7 +252,7 @@ def get_audio_info(file_path: str) -> Dict:
         return {
             "file_path": file_path,
             "file_size_bytes": os.path.getsize(file_path),
-            "format": Path(file_path).suffix.lower().lstrip('.'),
+            "format": Path(file_path).suffix.lower(),
             "sample_rate": sample_rate,
             "duration": len(audio_data) / sample_rate,
             "channels": audio_data.shape[1] if len(audio_data.shape) > 1 else 1,

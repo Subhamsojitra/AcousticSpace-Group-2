@@ -163,6 +163,7 @@ class ModelLoader:
         log_info("=" * 60)
         log_info("Loading AST model...")
         log_info("=" * 60)
+        log_info(f"Model path: {settings.AST_MODEL_PATH}")
         
         try:
             # Get model path
