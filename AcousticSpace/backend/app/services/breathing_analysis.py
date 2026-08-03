@@ -11,14 +11,11 @@ This module extracts handcrafted features.
 It does NOT perform machine learning.
 """
 
-import librosa
-import numpy as np
-
 from app.core.logger import log_error, log_info
 
 
 def analyze_breathing(
-    audio: np.ndarray,
+    audio,
     sample_rate: int,
     max_duration_sec: float = 30.0
 ):
@@ -27,7 +24,7 @@ def analyze_breathing(
 
     Parameters
     ----------
-    audio : np.ndarray
+    audio :
         Audio signal.
     sample_rate : int
         Sampling rate.
@@ -39,6 +36,8 @@ def analyze_breathing(
     dict
         Breathing statistics.
     """
+    import librosa
+    import numpy as np
 
     try:
         # Limit to max_duration_sec for faster processing

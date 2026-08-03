@@ -17,9 +17,6 @@ This service is used by:
 
 from pathlib import Path
 
-import librosa
-import numpy as np
-
 from app.core.logger import log_error, log_info
 
 
@@ -55,6 +52,10 @@ def load_audio(
         If audio cannot be loaded.
     """
 
+    # Lazy import heavy dependencies
+    import librosa
+    import numpy as np
+
     try:
 
         audio_path = Path(file_path)
@@ -88,7 +89,7 @@ def load_audio(
 
 
 def get_audio_duration(
-    audio: np.ndarray,
+    audio,
     sample_rate: int
 ) -> float:
     """
@@ -117,7 +118,7 @@ def get_sample_rate(
 
 
 def validate_audio(
-    audio: np.ndarray
+    audio
 ) -> bool:
     """
     Validate loaded audio.
@@ -137,7 +138,7 @@ def validate_audio(
 
 
 def audio_information(
-    audio: np.ndarray,
+    audio,
     sample_rate: int
 ):
     """

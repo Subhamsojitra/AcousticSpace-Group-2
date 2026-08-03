@@ -29,9 +29,6 @@ from app.services.feature_extractor import extract_features
 from app.services.preprocessing import preprocess_audio
 from app.services.rir_extractor import extract_rir_features
 
-# Lazy model loading
-from app.ml.model_loader import get_model_loader, ModelLoadError
-
 router = APIRouter()
 
 
@@ -59,6 +56,9 @@ async def analyze_audio(
         # Step 0: Lazy-load AST model on first analysis request
         log_info("Checking if AST model needs to be loaded...")
         try:
+            # Lazy import to defer torch/transformers until first analysis
+            from app.ml.model_loader import get_model_loader, ModelLoadError
+            
             model_loader = get_model_loader()
             if not model_loader.is_loaded():
                 log_info("AST model not loaded. Loading now...")

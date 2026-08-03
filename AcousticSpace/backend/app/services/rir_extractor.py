@@ -15,14 +15,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, Tuple
 
-import numpy as np
-import librosa
-
 from app.core.logger import log_error, log_info
 
 
-def estimate_background_noise(audio: np.ndarray, *, top_db: int = 40) -> float:
+def estimate_background_noise(audio, *, top_db: int = 40) -> float:
     """Estimate background noise RMS from low-energy regions."""
+    import numpy as np
+    import librosa
 
     y = np.asarray(audio, dtype=np.float32)
     if y.size == 0:
@@ -47,8 +46,10 @@ def estimate_background_noise(audio: np.ndarray, *, top_db: int = 40) -> float:
     return float(np.sqrt(np.mean(noise_samples ** 2)))
 
 
-def _energy_decay_curve(audio: np.ndarray, frame_length: int, hop_length: int) -> Tuple[np.ndarray, np.ndarray]:
+def _energy_decay_curve(audio, frame_length: int, hop_length: int):
     """Compute normalized energy decay curve in dB."""
+    import numpy as np
+    import librosa
 
     y = np.asarray(audio, dtype=np.float32)
     rms = librosa.feature.rms(y=y, frame_length=frame_length, hop_length=hop_length)
@@ -62,7 +63,7 @@ def _energy_decay_curve(audio: np.ndarray, frame_length: int, hop_length: int) -
 
 
 def estimate_rt60(
-    audio: np.ndarray,
+    audio,
     sample_rate: int,
     *,
     frame_ms: float = 50.0,
@@ -82,6 +83,7 @@ def estimate_rt60(
     - slope_db_per_sec
     - fit_r2 (simple correlation metric)
     """
+    import numpy as np
 
     y = np.asarray(audio, dtype=np.float32)
     if y.size == 0:
@@ -136,7 +138,7 @@ def estimate_rt60(
         return {"rt60_seconds": None, "slope_db_per_sec": None, "fit_r2": None}
 
 
-def extract_rir_features(audio: np.ndarray, sample_rate: int, max_duration_sec: float = 30.0) -> Dict[str, Any]:
+def extract_rir_features(audio, sample_rate: int, max_duration_sec: float = 30.0) -> Dict[str, Any]:
     """Extract heuristic RIR/acoustic descriptor features.
 
     Parameters
@@ -148,6 +150,8 @@ def extract_rir_features(audio: np.ndarray, sample_rate: int, max_duration_sec: 
     max_duration_sec:
         Maximum audio duration to process (seconds). Default 30s for fast integration.
     """
+    import numpy as np
+    import librosa
 
     try:
         y = np.asarray(audio, dtype=np.float32)

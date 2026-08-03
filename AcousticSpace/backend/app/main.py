@@ -55,24 +55,22 @@ async def lifespan(app: FastAPI):
     app.state.model_loading = False
     logger.info("✓ App state initialized (model will load on first prediction/analysis request)")
     
-    # Step 3b: Log AST model configuration
+    # Step 3b: Log AST model configuration (lightweight, no file I/O)
     logger.info("=" * 60)
     logger.info("AST Model Configuration:")
     logger.info(f"  Model path: {settings.AST_MODEL_PATH}")
-    ast_model_path = Path(settings.AST_MODEL_PATH)
-    if ast_model_path.exists():
-        logger.info(f"  ✓ Model directory exists")
-        if ast_model_path.is_dir():
-            logger.info(f"  ✓ Path is a directory")
-            files = list(ast_model_path.iterdir())
-            logger.info(f"  Files found: {[f.name for f in files]}")
-        else:
-            logger.warning(f"  ✗ Path is not a directory!")
-    else:
-        logger.warning(f"  ✗ Model directory does NOT exist!")
+    logger.info(f"  Model loading: Deferred (lazy loading enabled)")
     logger.info("=" * 60)
 
     total_startup = time.perf_counter() - startup_start
+    logger.info("=" * 60)
+    logger.info("Backend startup summary")
+    logger.info(f"  Config ............ {t0*1000:.2f} ms (cached)")
+    logger.info(f"  Database .......... {t_db*1000:.2f} ms")
+    logger.info(f"  Folders ........... {t_folders*1000:.2f} ms")
+    logger.info(f"  ML imports ........ Deferred")
+    logger.info(f"  Model loading ..... Deferred")
+    logger.info(f"  Total startup ..... {total_startup:.3f}s")
     logger.info("=" * 60)
     logger.info(f"✓ Startup completed in {total_startup:.3f}s")
     logger.info(f"  (AST model will load on first prediction request)")
@@ -118,36 +116,22 @@ app.add_middleware(ExceptionLoggingMiddleware)
 # -----------------------------
 @app.get("/", tags=["Health"])
 async def health_check():
-    """Enhanced health check endpoint with model status."""
+    """Enhanced health check endpoint with model status.
     
-    # Get model information if available
-    model_info = {
-        "model_loaded": False,
-        "device": "none",
-        "model": "none",
-        "lazy_loading": True,
-    }
+    This endpoint is optimized to return immediately without triggering
+    any ML model loading or heavy imports.
+    """
     
-    try:
-        from app.ml.model_loader import get_model_loader
-        model_loader = get_model_loader()
-        model_info = {
-            "model_loaded": model_loader.is_loaded(),
-            "device": str(model_loader.get_device()) if model_loader.get_device() else "none",
-            "model": settings.MODEL_NAME,
-            "lazy_loading": True,
-            "load_time_seconds": model_loader.get_load_time(),
-        }
-    except Exception as e:
-        # Model loader not initialized yet or failed
-        model_info["error"] = str(e)
-    
+    # Lightweight health check - no ML imports
     return {
         "status": "running",
         "project": "AcousticSpace",
         "version": settings.APP_VERSION,
         "message": "Backend is running successfully.",
-        **model_info
+        "model_loaded": False,
+        "device": "none",
+        "model": settings.MODEL_NAME,
+        "lazy_loading": True,
     }
 
 

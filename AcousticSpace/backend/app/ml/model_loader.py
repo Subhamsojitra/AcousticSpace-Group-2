@@ -15,9 +15,6 @@ import time
 from pathlib import Path
 from typing import Optional, Tuple
 
-import torch
-from transformers import ASTForAudioClassification, ASTFeatureExtractor
-
 from app.core.config import settings
 from app.core.logger import log_error, log_info, log_warning
 
@@ -41,17 +38,20 @@ class ModelLoader:
     - Resource cleanup
     """
     
-    _instance: Optional['ModelLoader'] = None
-    _lock: Optional[torch.multiprocessing.Lock] = None
+    _instance = None
+    _lock = None  # Will be set to threading.Lock when needed
     
-    def __new__(cls) -> 'ModelLoader':
+    def __new__(cls):
         """Thread-safe singleton initialization."""
         if cls._instance is None:
+            # Lazy import torch for multiprocessing lock
+            import torch
+            import threading
+            
             if cls._lock is None:
                 if torch.multiprocessing.get_start_method() == 'spawn':
                     cls._lock = torch.multiprocessing.Lock()
                 else:
-                    import threading
                     cls._lock = threading.Lock()
             
             with cls._lock:
@@ -72,7 +72,7 @@ class ModelLoader:
         self._load_time = None
         self._initialized = True
     
-    def detect_device(self) -> torch.device:
+    def detect_device(self):
         """
         Detect the best available device (CUDA > MPS > CPU).
         
@@ -81,6 +81,9 @@ class ModelLoader:
         torch.device
             The best available device for inference.
         """
+        # Lazy import torch
+        import torch
+        
         if torch.cuda.is_available():
             device = torch.device("cuda")
             device_name = torch.cuda.get_device_name(0)
@@ -164,6 +167,8 @@ class ModelLoader:
         log_info("Loading AST model...")
         log_info("=" * 60)
         log_info(f"Model path: {settings.AST_MODEL_PATH}")
+        log_info(f"Model path exists: {Path(settings.AST_MODEL_PATH).exists()}")
+        log_info(f"Model path is directory: {Path(settings.AST_MODEL_PATH).is_dir()}")
         
         try:
             # Get model path
@@ -183,9 +188,13 @@ class ModelLoader:
             self._device = self.detect_device()
             log_info(f"Device: {self._device}")
             
-            # Load model
+            # Load model - lazy import heavy dependencies
             log_info("Loading model weights...")
             t0 = time.perf_counter()
+            
+            # Lazy import torch and transformers
+            import torch
+            from transformers import ASTForAudioClassification, ASTFeatureExtractor
             
             self._model = ASTForAudioClassification.from_pretrained(
                 str(model_path),
@@ -193,6 +202,13 @@ class ModelLoader:
             )
             self._model.to(self._device)
             self._model.eval()  # Set to evaluation mode
+            
+            # Optimize for inference
+            if self._device.type == 'cuda':
+                # Use half precision for faster inference on GPU
+                self._model = self._model.half()
+                # Enable cuDNN autotuner for consistent input sizes
+                torch.backends.cudnn.benchmark = True
             
             t_load = time.perf_counter() - t0
             log_info(f"✓ Model weights loaded in {t_load:.2f}s")
@@ -246,37 +262,37 @@ class ModelLoader:
         
         # Clear CUDA cache if using GPU
         if self._device and self._device.type == 'cuda':
+            # Lazy import torch
+            import torch
             torch.cuda.empty_cache()
     
-    def get_model(self) -> Optional[ASTForAudioClassification]:
+    def get_model(self):
         """
         Get the loaded model.
         
         Returns
         -------
-        Optional[ASTForAudioClassification]
-            The loaded model, or None if not loaded.
+        The loaded model, or None if not loaded.
         """
         return self._model
     
-    def get_feature_extractor(self) -> Optional[ASTFeatureExtractor]:
+    def get_feature_extractor(self):
         """
         Get the loaded feature extractor.
         
         Returns
         -------
-        Optional[ASTFeatureExtractor]
-            The loaded feature extractor, or None if not loaded.
+        The loaded feature extractor, or None if not loaded.
         """
         return self._feature_extractor
     
-    def get_device(self) -> Optional[torch.device]:
+    def get_device(self):
         """
         Get the device the model is loaded on.
         
         Returns
         -------
-        Optional[torch.device]
+        torch.device or None
             The device, or None if model not loaded.
         """
         return self._device
@@ -328,10 +344,10 @@ class ModelLoader:
 
 
 # Global model loader instance
-_model_loader: Optional[ModelLoader] = None
+_model_loader = None
 
 
-def get_model_loader() -> ModelLoader:
+def get_model_loader():
     """
     Get the global model loader instance.
     

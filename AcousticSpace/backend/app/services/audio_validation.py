@@ -13,9 +13,6 @@ import os
 from pathlib import Path
 from typing import Dict, Tuple
 
-import numpy as np
-import soundfile as sf
-
 from app.core.config import settings
 from app.core.logger import log_error, log_info, log_warning
 
@@ -41,6 +38,10 @@ def validate_audio_file(file_path: str, content_type: str | None = None) -> Tupl
     Tuple[bool, Dict]
         (is_valid, validation_info)
     """
+    # Lazy import heavy dependencies
+    import numpy as np
+    import soundfile as sf
+    
     validation_info = {
         "file_exists": False,
         "file_readable": False,
@@ -175,6 +176,8 @@ def validate_audio_duration(file_path: str, min_duration: float = 1.0, max_durat
     Tuple[bool, float]
         (is_valid, duration)
     """
+    import soundfile as sf
+    
     try:
         audio_data, sample_rate = sf.read(file_path)
         duration = len(audio_data) / sample_rate
@@ -246,6 +249,9 @@ def get_audio_info(file_path: str) -> Dict:
     Dict
         Audio file information.
     """
+    import numpy as np
+    import soundfile as sf
+    
     try:
         audio_data, sample_rate = sf.read(file_path)
         

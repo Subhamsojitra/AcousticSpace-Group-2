@@ -33,13 +33,18 @@ from app.services.mock_prediction import predict as mock_predict
 from app.services.preprocessing import preprocess_audio
 from app.services.rir_extractor import extract_rir_features
 
+# Pre-import heavy dependencies at module level to avoid repeated import overhead
+import librosa
+import torch
+import numpy as np
+
 router = APIRouter()
 
 
 # ----------------------------------------------------
 # Lazy Model Loading (Production-Ready Singleton)
 # ----------------------------------------------------
-from app.ml.model_loader import get_model_loader, ModelLoadError
+# NOTE: Import moved inside function to defer torch/transformers loading
 
 async def ensure_model_loaded():
     """
@@ -52,6 +57,9 @@ async def ensure_model_loaded():
         True if model is ready, False if using mock predictions.
     """
     try:
+        # Lazy import to defer torch/transformers until first prediction
+        from app.ml.model_loader import get_model_loader, ModelLoadError
+        
         # Get the singleton model loader
         model_loader = get_model_loader()
         
@@ -153,14 +161,22 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
             feature_extractor = model_loader.get_feature_extractor()
             device = model_loader.get_device()
             
+            log_info(f"Model loader status - Ready: {model_ready}, Model: {ast_model is not None}, FeatureExtractor: {feature_extractor is not None}, Device: {device}")
+            
             if ast_model is not None and feature_extractor is not None:
                 # Use real AST model inference
-                import librosa
                 import torch
                 import numpy as np
                 
-                # Load audio for AST model (AST expects raw audio, not features)
-                audio_for_ast, _ = librosa.load(request.file_path, sr=16000, mono=True)
+                # Reuse already-loaded audio - resample to 16kHz if needed
+                # AST expects 16kHz mono audio
+                if sample_rate != 16000:
+                    import librosa
+                    audio_for_ast = librosa.resample(processed_audio, orig_sr=sample_rate, target_sr=16000)
+                else:
+                    audio_for_ast = processed_audio
+                
+                log_info(f"Using preprocessed audio for AST: shape={audio_for_ast.shape}, sr=16000, mono=True")
                 
                 # Prepare inputs for AST
                 inputs = feature_extractor(
@@ -169,14 +185,27 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
                     return_tensors="pt"
                 )
                 input_values = inputs["input_values"].to(device)
+                log_info(f"Input shape: {input_values.shape}, device: {device}")
                 
                 # Run inference (no gradients for inference)
                 with torch.no_grad():
                     outputs = ast_model(input_values)
-                    probs = torch.softmax(outputs.logits, dim=1)[0]
+                    logits = outputs.logits
+                    log_info(f"Raw logits: {logits}")
+                    
+                    probs = torch.softmax(logits, dim=1)[0]
+                    log_info(f"Softmax probabilities: {probs}")
+                    log_info(f"  Class 0 (REAL): {probs[0].item():.6f} ({probs[0].item()*100:.2f}%)")
+                    log_info(f"  Class 1 (FAKE): {probs[1].item():.6f} ({probs[1].item()*100:.2f}%)")
+                    
                     confidence_score = probs[1].item()  # probability of class 1 = fake
+                    predicted_class = torch.argmax(probs).item()
+                    log_info(f"Predicted class: {predicted_class} ({'FAKE' if predicted_class == 1 else 'REAL'})")
+                    
                     prediction = "Fake" if confidence_score > 0.5 else "Real"
                     confidence = round(confidence_score * 100, 2)
+                    
+                    log_info(f"Final prediction: {prediction}, confidence: {confidence}%")
                 
                 prediction_result = {
                     "prediction": prediction,

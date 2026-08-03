@@ -17,14 +17,12 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-import numpy as np
-import librosa
-
 from app.core.logger import log_error, log_info
 
 
-def _stats(x: np.ndarray) -> Dict[str, float]:
+def _stats(x) -> Dict[str, float]:
     """Compute robust summary statistics for an array."""
+    import numpy as np
 
     x = np.asarray(x, dtype=np.float32)
     if x.size == 0:
@@ -49,11 +47,12 @@ def _stats(x: np.ndarray) -> Dict[str, float]:
     }
 
 
-def _safe_log1p(x: np.ndarray, eps: float = 1e-10) -> np.ndarray:
+def _safe_log1p(x, eps: float = 1e-10):
+    import numpy as np
     return np.log1p(np.maximum(x, eps))
 
 
-def extract_features(audio: np.ndarray, sample_rate: int, max_duration_sec: float = 30.0) -> Dict[str, Any]:
+def extract_features(audio, sample_rate: int, max_duration_sec: float = 30.0) -> Dict[str, Any]:
     """Extract handcrafted acoustic features.
 
     Parameters
@@ -70,6 +69,8 @@ def extract_features(audio: np.ndarray, sample_rate: int, max_duration_sec: floa
     dict
         JSON-serializable feature dictionary with stable keys.
     """
+    import numpy as np
+    import librosa
 
     try:
         y = np.asarray(audio, dtype=np.float32)

@@ -18,9 +18,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple
 
-import numpy as np
-import librosa
-
 from app.core.logger import log_error, log_info
 
 
@@ -33,7 +30,7 @@ class PreprocessConfig:
     normalize: bool = True
 
 
-def to_mono(audio: np.ndarray) -> np.ndarray:
+def to_mono(audio) -> np.ndarray:
     """Ensure audio is mono.
 
     Parameters
@@ -46,6 +43,7 @@ def to_mono(audio: np.ndarray) -> np.ndarray:
     np.ndarray
         Mono signal.
     """
+    import numpy as np
 
     if audio.ndim == 1:
         return audio
@@ -57,8 +55,9 @@ def to_mono(audio: np.ndarray) -> np.ndarray:
     return np.mean(audio, axis=-1)
 
 
-def resample_audio(audio: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
+def resample_audio(audio, orig_sr: int, target_sr: int):
     """Resample audio to target sample rate."""
+    import librosa
 
     if orig_sr == target_sr:
         return audio
@@ -66,8 +65,9 @@ def resample_audio(audio: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarra
     return librosa.resample(audio, orig_sr=orig_sr, target_sr=target_sr)
 
 
-def normalize_audio(audio: np.ndarray) -> np.ndarray:
+def normalize_audio(audio):
     """Peak normalize audio to [-1, 1] range."""
+    import numpy as np
 
     if audio.size == 0:
         return audio
@@ -80,8 +80,10 @@ def normalize_audio(audio: np.ndarray) -> np.ndarray:
     return audio / peak
 
 
-def trim_silence(audio: np.ndarray, top_db: int = 25) -> np.ndarray:
+def trim_silence(audio, top_db: int = 25):
     """Trim leading/trailing silence using RMS-based threshold."""
+    import librosa
+    import numpy as np
 
     if audio.size == 0:
         return audio
@@ -93,12 +95,12 @@ def trim_silence(audio: np.ndarray, top_db: int = 25) -> np.ndarray:
 
 
 def preprocess_audio(
-    audio: np.ndarray,
+    audio,
     sample_rate: int,
     *,
-    config: PreprocessConfig | None = None,
+    config = None,
     max_duration_sec: float = 30.0,
-) -> np.ndarray:
+):
     """Preprocess audio for downstream feature extraction.
 
     Workflow:
@@ -129,6 +131,7 @@ def preprocess_audio(
     RuntimeError
         If preprocessing fails.
     """
+    import numpy as np
 
     cfg = config or PreprocessConfig(target_sample_rate=sample_rate)
 
