@@ -30,10 +30,11 @@ WORKDIR /app
 FROM base AS dependencies
 
 # Copy requirements first for layer caching
-COPY requirements.txt .
+# Use requirements.docker.txt for CPU-only PyTorch to avoid CUDA downloads
+COPY requirements.docker.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with CPU-only PyTorch
+RUN pip install --no-cache-dir -r requirements.docker.txt
 
 # Stage 3: Final production image
 FROM base AS production
