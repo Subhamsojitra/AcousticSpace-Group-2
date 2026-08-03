@@ -13,8 +13,9 @@ import time
 import uuid
 from typing import Callable
 
-from fastapi import Request, Response
+from fastapi import HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.logger import logger
@@ -30,6 +31,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         start = time.perf_counter()
+        response = None
 
         try:
             response = await call_next(request)
@@ -43,7 +45,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     "method": request.method,
                     "path": request.url.path,
                     "query": str(request.url.query),
-                    "status_code": getattr(response, "status_code", None),  # type: ignore[name-defined]
+                    "status_code": getattr(response, "status_code", None),
                     "duration_ms": round(duration_ms, 2),
                     "client": request.client.host if request.client else None,
                 },
@@ -64,6 +66,10 @@ class ExceptionLoggingMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         try:
             return await call_next(request)
+        except (HTTPException, StarletteHTTPException):
+            # Let FastAPI's exception handlers produce the standardized response
+            # for known HTTP errors (raised in endpoints).
+            raise
         except Exception as exc:  # pragma: no cover
             logger.exception(
                 "unhandled_exception",
@@ -78,7 +84,9 @@ class ExceptionLoggingMiddleware(BaseHTTPMiddleware):
                 status_code=500,
                 content={
                     "success": False,
+                    "message": "Internal server error.",
                     "detail": "Internal server error.",
+                    "error_code": 500,
                 },
             )
 

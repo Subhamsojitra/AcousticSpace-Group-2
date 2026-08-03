@@ -1,10 +1,10 @@
-import os
-
 from contextlib import asynccontextmanager
 import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.upload import router as upload_router
 from app.api.predict import router as predict_router
@@ -12,7 +12,7 @@ from app.api.analysis import router as analysis_router
 from app.api.history import router as history_router
 
 from app.core.config import settings
-from app.core.logger import logger
+from app.core.logger import log_startup_complete, logger
 from app.core.middleware import ExceptionLoggingMiddleware, RequestLoggingMiddleware
 from app.database.db import Base, engine
 # -----------------------------
@@ -65,7 +65,6 @@ async def lifespan(app: FastAPI):
     total_startup = time.perf_counter() - startup_start
     logger.info("=" * 60)
     logger.info("Backend startup summary")
-    logger.info(f"  Config ............ {t0*1000:.2f} ms (cached)")
     logger.info(f"  Database .......... {t_db*1000:.2f} ms")
     logger.info(f"  Folders ........... {t_folders*1000:.2f} ms")
     logger.info(f"  ML imports ........ Deferred")
@@ -75,6 +74,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"✓ Startup completed in {total_startup:.3f}s")
     logger.info(f"  (AST model will load on first prediction request)")
     logger.info("=" * 60)
+
+    log_startup_complete(total_startup)
 
     yield
 
@@ -95,7 +96,7 @@ app = FastAPI(
 # CORS Configuration
 # -----------------------------
 # NOTE: keep origins configurable for production deployments.
-allow_origins = [o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if o.strip()]
+allow_origins = [o.strip() for o in settings.CORS_ALLOW_ORIGINS.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
@@ -110,6 +111,46 @@ app.add_middleware(
 # -----------------------------
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(ExceptionLoggingMiddleware)
+
+
+# -----------------------------
+# Global Exception Handlers
+# -----------------------------
+# These produce standardized JSON error responses while preserving the
+# `detail` field for backward compatibility with the frontend.
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Handle HTTPException raised in endpoints with a standardized body."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "message": str(exc.detail),
+            "detail": exc.detail,
+            "error_code": exc.status_code,
+        },
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Handle request validation errors with a standardized body."""
+    errors = exc.errors()
+    message = "Invalid request."
+    if errors:
+        first = errors[0]
+        loc = ".".join(str(x) for x in first.get("loc", []) if x != "body")
+        message = f"{loc}: {first.get('msg', 'invalid value')}" if loc else first.get("msg", "invalid value")
+    logger.warning("validation_error", extra={"path": request.url.path, "errors": errors})
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "message": message,
+            "detail": errors,
+            "error_code": 422,
+        },
+    )
 
 # -----------------------------
 # Health Check

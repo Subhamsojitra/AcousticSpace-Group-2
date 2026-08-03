@@ -13,31 +13,27 @@ This module persists prediction results to DB history.
 from __future__ import annotations
 
 import time
-from typing import Optional
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from app.api.schemas import PredictionResponse
-from app.core.config import settings
-from app.core.logger import log_error, log_info, log_warning
+from app.core.logger import log_error, log_info, log_prediction_finished, log_prediction_started, log_warning
 from app.database.db import get_db
 from app.database.models import History
 from app.services.audio_loader import load_audio
-from app.services.audio_validation import validate_audio_file, AudioValidationError
+from app.services.audio_validation import validate_audio_file
 from app.services.breathing_analysis import analyze_breathing
 from app.services.cadence_alignment import analyze_cadence_alignment
 from app.services.feature_extractor import extract_features
-from app.services.inference import predict_audio
 from app.services.mock_prediction import predict as mock_predict
 from app.services.preprocessing import preprocess_audio
 from app.services.rir_extractor import extract_rir_features
 
-# Pre-import heavy dependencies at module level to avoid repeated import overhead
-import librosa
-import torch
-import numpy as np
-
+# NOTE: Heavy ML libraries (torch, transformers, librosa) are intentionally NOT
+# imported at module level. They are imported lazily inside functions to keep
+# startup fast and defer model loading until the first prediction request.
 router = APIRouter()
 
 
@@ -94,7 +90,8 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
     """Predict whether an audio file is Real or Fake."""
 
     start = time.perf_counter()
-    log_info(f"Prediction request received for: {request.file_path}")
+    request_id = req.headers.get("x-request-id", "")
+    log_prediction_started(request.file_path, request_id)
 
     try:
         # Step 0: Validate audio file
@@ -252,7 +249,7 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
             f"Prediction: {t_prediction:.2f}s, Total: {processing_time:.2f}s"
         )
 
-        filename = __import__("pathlib").Path(request.file_path).name
+        filename = Path(request.file_path).name
 
         record = History(
             filename=filename,
@@ -270,6 +267,11 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
         # Log detailed prediction results including cadence metrics
         alignment_score = prediction_result.get("alignment_score", "N/A")
         cadence_label = prediction_result.get("cadence", "N/A")
+        log_prediction_finished(
+            prediction=prediction_result.get("prediction", "unknown"),
+            confidence=float(prediction_result.get("confidence", 0.0)),
+            duration_seconds=processing_time,
+        )
         log_info(
             f"Prediction completed: {prediction_result.get('prediction')} "
             f"(confidence={prediction_result.get('confidence')}%, "

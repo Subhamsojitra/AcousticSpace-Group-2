@@ -1,15 +1,18 @@
-import os
-from pathlib import Path
 import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.api.schemas import DeleteResponse, UploadResponse
 from app.core.config import settings
-from app.core.logger import log_error, log_info, logger
+from app.core.logger import log_error, log_info, log_upload_completed, logger
 from app.services.validation import allowed_extension, build_safe_upload_path, validate_file_size
 
 router = APIRouter()
+
+# Stream uploads in chunks to bound memory usage instead of loading the whole
+# file into memory at once.
+UPLOAD_CHUNK_SIZE = 1024 * 1024  # 1 MB
 
 
 @router.post("/", response_model=UploadResponse)
@@ -18,7 +21,7 @@ async def upload_audio(file: UploadFile = File(...)) -> UploadResponse:
 
     - Validates extension against `settings.ALLOWED_EXTENSIONS`.
     - Validates file size against `settings.MAX_UPLOAD_SIZE`.
-    - Saves the uploaded file using a unique filename.
+    - Saves the uploaded file using a unique filename (streamed to disk).
     """
 
     if not file.filename:
@@ -29,30 +32,52 @@ async def upload_audio(file: UploadFile = File(...)) -> UploadResponse:
         ext = Path(original_name).suffix.lower()
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 
-    # Read uploaded content (project uses in-memory read).
-    try:
-        contents = await file.read()
-    except Exception as exc:
-        log_error(f"Failed reading upload stream: {exc}")
-        raise HTTPException(status_code=400, detail="Unable to read uploaded file.")
-
-    try:
-        validate_file_size(len(contents))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-
     extension = Path(original_name).suffix.lower()
     unique_name = f"{uuid.uuid4().hex}{extension}"
     save_path = build_safe_upload_path(unique_name)
 
+    total_size = 0
     try:
         save_path.parent.mkdir(parents=True, exist_ok=True)
         with open(save_path, "wb") as buffer:
-            buffer.write(contents)
+            while True:
+                chunk = await file.read(UPLOAD_CHUNK_SIZE)
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                # Enforce max size while streaming to avoid storing oversized files.
+                try:
+                    validate_file_size(total_size)
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc))
+                buffer.write(chunk)
+    except HTTPException:
+        # Clean up partial file on validation failure.
+        if save_path.exists():
+            try:
+                save_path.unlink()
+            except OSError:
+                pass
+        raise
     except Exception as exc:
-        log_error(f"Failed writing upload to disk: {exc}")
+        log_error(f"Failed reading/writing upload stream: {exc}")
+        # Clean up partial file on error.
+        if save_path.exists():
+            try:
+                save_path.unlink()
+            except OSError:
+                pass
         raise HTTPException(status_code=500, detail="Failed to store uploaded file.")
 
+    if total_size == 0:
+        # Empty file - remove and reject.
+        try:
+            save_path.unlink()
+        except OSError:
+            pass
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    log_upload_completed(unique_name, total_size)
     log_info(f"Uploaded file: {original_name} -> {unique_name}")
 
     return UploadResponse(
@@ -61,7 +86,7 @@ async def upload_audio(file: UploadFile = File(...)) -> UploadResponse:
         original_name=original_name,
         file_path=str(save_path),
         content_type=file.content_type,
-        size_bytes=len(contents),
+        size_bytes=total_size,
     )
 
 
@@ -101,7 +126,7 @@ async def delete_uploaded_file(filename: str) -> DeleteResponse:
     try:
         file_path.unlink()
     except Exception as exc:
-        logger.error("file_delete_failed", extra={"filename": filename, "error": str(exc)})
+        logger.error("file_delete_failed", extra={"deleted_file": filename, "error": str(exc)})
         raise HTTPException(status_code=500, detail="Failed to delete file.")
 
     return DeleteResponse(message="File deleted successfully.")

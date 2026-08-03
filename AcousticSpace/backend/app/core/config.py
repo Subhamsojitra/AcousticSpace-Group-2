@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -6,6 +7,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """
     Application Configuration
+
+    All values can be overridden via environment variables or a `.env` file.
+    Relative paths are resolved to absolute paths under the project root.
     """
 
     # -----------------------------------
@@ -20,6 +24,12 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     DEBUG: bool = True
+
+    # CORS origins (comma-separated) - configurable for production
+    CORS_ALLOW_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+    LOG_LEVEL: str = "INFO"
 
     # -----------------------------------
     # Project Paths
@@ -39,15 +49,18 @@ class Settings(BaseSettings):
     # Path to the trained AST model directory
     # Can be absolute path or relative to BASE_DIR
     AST_MODEL_PATH: str = ""
-    
+
     # Model device: cuda, mps, cpu (auto-detected if not set)
     MODEL_DEVICE: str = ""
-    
+
     # Model name for logging and identification
     MODEL_NAME: str = "AST"
-    
+
     # Model cache directory for Hugging Face
     MODEL_CACHE_DIR: str = ""
+
+    # Enable lazy model loading (recommended for faster startup)
+    ENABLE_LAZY_LOADING: bool = True
 
     # -----------------------------------
     # Database
@@ -62,9 +75,16 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: str = ".wav,.mp3,.flac,.ogg,.m4a"
 
     # -----------------------------------
+    # Logging
+    # -----------------------------------
+    LOG_MAX_BYTES: int = 10 * 1024 * 1024  # 10 MB rotation
+    LOG_BACKUP_COUNT: int = 5
+
+    # -----------------------------------
     # Security
     # -----------------------------------
-    SECRET_KEY: str = "change-this-secret-key"
+    # NOTE: In production, override this via environment variable.
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-secret-key")
 
     # -----------------------------------
     # Pydantic Configuration
@@ -75,13 +95,35 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    def _resolve_path(self, value: str) -> Path:
+        """Resolve a possibly-relative path to an absolute path under BASE_DIR."""
+        path = Path(value)
+        if path.is_absolute():
+            return path
+        return (self.BASE_DIR / path).resolve()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # If AST_MODEL_PATH is not set via environment, compute default path
+        # Resolve all relative paths to absolute for cross-platform compatibility.
+        self.UPLOAD_DIR = str(self._resolve_path(self.UPLOAD_DIR))
+        self.FEATURE_DIR = str(self._resolve_path(self.FEATURE_DIR))
+        self.MODEL_DIR = str(self._resolve_path(self.MODEL_DIR))
+        self.LOG_DIR = str(self._resolve_path(self.LOG_DIR))
+
+        # Resolve database URL (only for sqlite relative paths).
+        if self.DATABASE_URL.startswith("sqlite:///"):
+            db_rel = self.DATABASE_URL.replace("sqlite:///", "")
+            # Only rewrite if it is a relative path (not an absolute or in-memory).
+            if db_rel and not Path(db_rel).is_absolute() and db_rel != ":memory:":
+                self.DATABASE_URL = f"sqlite:///{self._resolve_path(db_rel)}"
+
+        # If AST_MODEL_PATH is not set via environment, compute default path.
         if not self.AST_MODEL_PATH:
-            # Default: results/ast_final_model relative to project root
-            # BASE_DIR is AcousticSpace/backend, so go up one level to AcousticSpace
-            self.AST_MODEL_PATH = str(self.BASE_DIR.parent / "results" / "ast_final_model")
+            # Default: results/ast_final_model relative to project root.
+            # BASE_DIR is AcousticSpace/backend, so go up one level to AcousticSpace.
+            self.AST_MODEL_PATH = str((self.BASE_DIR.parent / "results" / "ast_final_model").resolve())
+        else:
+            self.AST_MODEL_PATH = str(self._resolve_path(self.AST_MODEL_PATH))
 
 
 settings = Settings()

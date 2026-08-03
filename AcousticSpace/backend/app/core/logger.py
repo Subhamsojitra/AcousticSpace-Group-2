@@ -1,5 +1,5 @@
 import logging
-import os
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from app.core.config import settings
@@ -12,33 +12,40 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 LOG_FILE = LOG_DIR / "backend.log"
 
+# ----------------------------------------------------
+# Log Level (configurable via LOG_LEVEL env var)
+# ----------------------------------------------------
+LOG_LEVEL = getattr(logging, str(settings.LOG_LEVEL).upper(), logging.INFO)
+
 
 # ----------------------------------------------------
 # Logger Configuration
 # ----------------------------------------------------
 logger = logging.getLogger("AcousticSpace")
 
-logger.setLevel(logging.INFO)
+logger.setLevel(LOG_LEVEL)
 
-# Prevent duplicate logs
+# Prevent duplicate handlers on reload (e.g. uvicorn --reload)
 if not logger.handlers:
 
     # -----------------------------
-    # File Handler
+    # File Handler (with rotation)
     # -----------------------------
-    file_handler = logging.FileHandler(
+    file_handler = RotatingFileHandler(
         LOG_FILE,
-        encoding="utf-8"
+        maxBytes=settings.LOG_MAX_BYTES,
+        backupCount=settings.LOG_BACKUP_COUNT,
+        encoding="utf-8",
     )
 
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(LOG_LEVEL)
 
     # -----------------------------
     # Console Handler
     # -----------------------------
     console_handler = logging.StreamHandler()
 
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(LOG_LEVEL)
 
     # -----------------------------
     # Log Format
@@ -75,3 +82,41 @@ def log_error(message: str):
 
 def log_exception(message: str):
     logger.exception(message)
+
+
+# ----------------------------------------------------
+# Structured Lifecycle Logging Helpers
+# ----------------------------------------------------
+def log_startup_complete(duration_seconds: float):
+    """Log that the backend finished starting up."""
+    logger.info("Backend Started", extra={"startup_time_seconds": round(duration_seconds, 3)})
+
+
+def log_model_loaded(message: str, load_time_seconds: float = 0.0):
+    """Log that the ML model was loaded."""
+    logger.info(
+        f"Model Loaded: {message}",
+        extra={"model_load_time_seconds": round(load_time_seconds, 3)},
+    )
+
+
+def log_prediction_started(file_path: str, request_id: str = ""):
+    """Log that a prediction has started."""
+    logger.info("Prediction Started", extra={"file_path": file_path, "request_id": request_id})
+
+
+def log_prediction_finished(prediction: str, confidence: float, duration_seconds: float):
+    """Log that a prediction has finished."""
+    logger.info(
+        "Prediction Finished",
+        extra={
+            "prediction": prediction,
+            "confidence": confidence,
+            "processing_time_seconds": round(duration_seconds, 3),
+        },
+    )
+
+
+def log_upload_completed(uploaded_file: str, size_bytes: int):
+    """Log that an upload was completed."""
+    logger.info("Upload Completed", extra={"uploaded_file": uploaded_file, "size_bytes": size_bytes})

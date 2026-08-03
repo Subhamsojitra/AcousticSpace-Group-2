@@ -16,23 +16,23 @@ This module persists analysis results to DB history.
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.api.schemas import AnalysisResponse
-from app.core.logger import log_error, log_info
+from app.core.logger import log_error, log_info, log_warning
 from app.database.db import get_db
 from app.database.models import History
 from app.services.audio_loader import get_audio_duration, load_audio
 from app.services.breathing_analysis import analyze_breathing
+from app.services.cadence_alignment import analyze_cadence_alignment
 from app.services.feature_extractor import extract_features
 from app.services.preprocessing import preprocess_audio
 from app.services.rir_extractor import extract_rir_features
 
 router = APIRouter()
-
-
-from pydantic import BaseModel
 
 
 class AnalysisRequestModel(BaseModel):
@@ -106,7 +106,6 @@ async def analyze_audio(
 
         # Step 6: Breathing cadence alignment analysis
         t0 = time.perf_counter()
-        from app.services.cadence_alignment import analyze_cadence_alignment
         cadence_features = analyze_cadence_alignment(processed_audio, sample_rate)
         t_cadence = time.perf_counter() - t0
         log_info(f"Cadence alignment completed in {t_cadence:.2f}s")
@@ -123,11 +122,9 @@ async def analyze_audio(
         )
 
         # Persist to history (prediction fields remain null for /analysis)
-        import pathlib
-
         record = History(
-            filename=pathlib.Path(request.file_path).name,
-            original_filename=pathlib.Path(request.file_path).name,
+            filename=Path(request.file_path).name,
+            original_filename=Path(request.file_path).name,
 
             file_path=request.file_path,
             duration=duration,
