@@ -25,6 +25,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 from app.main import app
 from app.core.config import settings
 
+# Ensure database tables are created before tests
+from app.database.db import Base, engine
+Base.metadata.create_all(bind=engine)
+
 client = TestClient(app)
 
 

@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import time
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -13,9 +14,12 @@ from app.api.history import router as history_router
 
 from app.core.config import settings
 from app.core.exceptions import AcousticSpaceException
-from app.core.logger import log_startup_complete, logger
+from app.core.logger import log_shutdown, log_startup_complete, logger
 from app.core.middleware import ExceptionLoggingMiddleware, RequestLoggingMiddleware
 from app.database.db import Base, engine
+
+# Import models to ensure they are registered with SQLAlchemy before create_all
+from app.database.models import History  # noqa: F401
 # -----------------------------
 # Application Lifecycle
 # -----------------------------
@@ -31,8 +35,21 @@ async def lifespan(app: FastAPI):
     # Step 1: Ensure required runtime folders exist
     t0 = time.perf_counter()
     from pathlib import Path
-    for p in [settings.UPLOAD_DIR, settings.FEATURE_DIR, settings.MODEL_DIR, settings.LOG_DIR]:
-        Path(p).mkdir(parents=True, exist_ok=True)
+    runtime_dirs = [
+        settings.UPLOAD_DIR,
+        settings.FEATURE_DIR,
+        settings.MODEL_DIR,
+        settings.LOG_DIR,
+        settings.RESULTS_DIR,
+        settings.DATABASE_DIR,
+    ]
+    for dir_path in runtime_dirs:
+        try:
+            Path(dir_path).mkdir(parents=True, exist_ok=True)
+            logger.debug(f"Directory ensured: {dir_path}")
+        except OSError as exc:
+            logger.error(f"Failed to create directory {dir_path}: {exc}")
+            raise
     
     # Ensure database directory exists
     db_path = Path(settings.DATABASE_URL.replace("sqlite:///", ""))
@@ -80,6 +97,8 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    # Shutdown
+    log_shutdown()
     logger.info("AcousticSpace backend stopped.")
 
 
@@ -213,8 +232,31 @@ async def acoustic_space_exception_handler(request: Request, exc: AcousticSpaceE
         },
     )
 
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle all unhandled exceptions to prevent exposing internal details."""
+    logger.exception(
+        "Unhandled exception",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error": str(exc),
+        }
+    )
+    # Never expose internal details to clients
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "message": "Internal server error",
+            "detail": "An unexpected error occurred. Please contact support if the problem persists.",
+            "error_code": 500,
+        },
+    )
+
 # -----------------------------
-# Health Check
+# Health Check Endpoints
 # -----------------------------
 @app.get("/", tags=["Health"], summary="Health check", description="Returns the health status of the AcousticSpace API")
 async def health_check():
@@ -243,6 +285,83 @@ async def health_check():
             "lazy_loading": True,
         }
     }
+
+
+@app.get("/health", tags=["Health"], summary="Detailed health check", description="Returns detailed health status including database connectivity")
+async def health_check_detailed():
+    """Detailed health check endpoint that verifies database connectivity.
+    
+    This endpoint performs lightweight checks to verify:
+    - Backend is running
+    - Database is accessible
+    - Configuration is loaded
+    - Model status (loaded / lazy)
+    - Version information
+    
+    Returns
+    -------
+    dict
+        Detailed health status information.
+    """
+    import time
+    health_status = {
+        "success": True,
+        "message": "Health check completed",
+        "data": {
+            "status": "healthy",
+            "backend": "running",
+            "version": settings.APP_VERSION,
+            "model_loaded": False,
+            "model": settings.MODEL_NAME,
+            "lazy_loading": True,
+            "database": {
+                "status": "unknown",
+                "url": settings.DATABASE_URL.replace(":///", "://***/") if "sqlite" in settings.DATABASE_URL else "configured",
+            },
+            "configuration": {
+                "loaded": True,
+                "debug_mode": settings.DEBUG,
+                "log_level": settings.LOG_LEVEL,
+            },
+            "directories": {
+                "upload": settings.UPLOAD_DIR,
+                "features": settings.FEATURE_DIR,
+                "models": settings.MODEL_DIR,
+                "logs": settings.LOG_DIR,
+            }
+        }
+    }
+    
+    # Check database connectivity
+    try:
+        from sqlalchemy import text
+        from app.database.db import SessionLocal
+        db_start = time.perf_counter()
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        db_time = (time.perf_counter() - db_start) * 1000
+        health_status["data"]["database"]["status"] = "connected"
+        health_status["data"]["database"]["response_time_ms"] = round(db_time, 2)
+    except Exception as exc:
+        logger.error(f"Health check database error: {exc}")
+        health_status["data"]["database"]["status"] = "error"
+        health_status["data"]["database"]["error"] = str(exc)
+        health_status["success"] = False
+        health_status["message"] = "Database connectivity check failed"
+    
+    # Check if model is loaded (without triggering load)
+    try:
+        from app.ml.model_loader import get_model_loader
+        model_loader = get_model_loader()
+        health_status["data"]["model_loaded"] = model_loader.is_loaded()
+        if model_loader.is_loaded():
+            health_status["data"]["device"] = model_loader.get_device()
+    except Exception:
+        # Model loader not available or not loaded - this is fine for health check
+        pass
+    
+    return health_status
 
 
 

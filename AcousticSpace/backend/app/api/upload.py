@@ -75,6 +75,14 @@ async def upload_audio(file: UploadFile = File(..., description="Audio file to u
         )
 
     extension = Path(original_name).suffix.lower()
+    # Validate extension one more time
+    is_valid, error = InputValidator.validate_audio_extension(original_name)
+    if not is_valid:
+        raise FileUploadError(
+            message="Invalid file extension.",
+            detail=error
+        )
+    
     unique_name = f"{uuid.uuid4().hex}{extension}"
     save_path = build_safe_upload_path(unique_name)
 

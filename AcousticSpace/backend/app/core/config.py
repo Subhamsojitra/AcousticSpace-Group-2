@@ -35,13 +35,16 @@ class Settings(BaseSettings):
     # Project Paths
     # -----------------------------------
     # BASE_DIR is computed automatically from this file's location
-    BASE_DIR: Path = Path(__file__).resolve().parents[2]
+    # Path: app/core/config.py -> parents[3] = project root (AcousticSpace/)
+    BASE_DIR: Path = Path(__file__).resolve().parents[3]
 
     # These paths can be absolute or relative to BASE_DIR
     UPLOAD_DIR: str = "backend/uploads"
     FEATURE_DIR: str = "backend/extracted_features"
     MODEL_DIR: str = "backend/saved_models"
     LOG_DIR: str = "backend/logs"
+    RESULTS_DIR: str = "backend/results"
+    DATABASE_DIR: str = "backend/database"
 
     # -----------------------------------
     # AST Model (Hugging Face)
@@ -66,6 +69,12 @@ class Settings(BaseSettings):
     # Database
     # -----------------------------------
     DATABASE_URL: str = "sqlite:///backend/acousticspace.db"
+    
+    # Database connection pool settings
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800  # 30 minutes
 
     # -----------------------------------
     # File Upload
@@ -119,6 +128,8 @@ class Settings(BaseSettings):
         self.FEATURE_DIR = str(self._resolve_path(self.FEATURE_DIR))
         self.MODEL_DIR = str(self._resolve_path(self.MODEL_DIR))
         self.LOG_DIR = str(self._resolve_path(self.LOG_DIR))
+        self.RESULTS_DIR = str(self._resolve_path(self.RESULTS_DIR))
+        self.DATABASE_DIR = str(self._resolve_path(self.DATABASE_DIR))
 
         # Resolve database URL (only for sqlite relative paths).
         if self.DATABASE_URL.startswith("sqlite:///"):
@@ -130,8 +141,8 @@ class Settings(BaseSettings):
         # If AST_MODEL_PATH is not set via environment, compute default path.
         if not self.AST_MODEL_PATH:
             # Default: results/ast_final_model relative to project root.
-            # BASE_DIR is AcousticSpace/backend, so go up one level to AcousticSpace.
-            self.AST_MODEL_PATH = str((self.BASE_DIR.parent / "results" / "ast_final_model").resolve())
+            # BASE_DIR is now the project root (AcousticSpace/).
+            self.AST_MODEL_PATH = str((self.BASE_DIR / "results" / "ast_final_model").resolve())
         else:
             self.AST_MODEL_PATH = str(self._resolve_path(self.AST_MODEL_PATH))
 

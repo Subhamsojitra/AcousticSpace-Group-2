@@ -69,19 +69,43 @@ if not logger.handlers:
 # Logging Helper Functions
 # ----------------------------------------------------
 def log_info(message: str):
+    """Log info level message."""
     logger.info(message)
 
 
 def log_warning(message: str):
+    """Log warning level message."""
     logger.warning(message)
 
 
-def log_error(message: str):
-    logger.error(message)
+def log_error(message: str, exc_info: bool = False):
+    """Log error level message.
+    
+    Parameters
+    ----------
+    message : str
+        The error message to log.
+    exc_info : bool
+        Whether to include exception traceback information.
+    """
+    logger.error(message, exc_info=exc_info)
 
 
 def log_exception(message: str):
+    """Log exception with traceback."""
     logger.exception(message)
+
+
+def log_critical(message: str):
+    """Log critical level message."""
+    logger.critical(message)
+
+
+def log_shutdown():
+    """Log application shutdown."""
+    logger.info("=" * 60)
+    logger.info("AcousticSpace backend shutting down...")
+    logger.info("=" * 60)
 
 
 # ----------------------------------------------------
