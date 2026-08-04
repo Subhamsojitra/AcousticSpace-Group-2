@@ -84,7 +84,17 @@ class Settings(BaseSettings):
     # Security
     # -----------------------------------
     # NOTE: In production, override this via environment variable.
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-secret-key")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-secret-key-in-production")
+    
+    # Allowed hosts for CORS (comma-separated)
+    # In production, specify exact origins instead of wildcards
+    ALLOWED_HOSTS: str = "localhost,127.0.0.1"
+    
+    # Maximum filename length for uploaded files
+    MAX_FILENAME_LENGTH: int = 255
+    
+    # Enable request validation logging
+    LOG_VALIDATION_ERRORS: bool = True
 
     # -----------------------------------
     # Pydantic Configuration

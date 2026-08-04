@@ -12,6 +12,7 @@ from app.api.analysis import router as analysis_router
 from app.api.history import router as history_router
 
 from app.core.config import settings
+from app.core.exceptions import AcousticSpaceException
 from app.core.logger import log_startup_complete, logger
 from app.core.middleware import ExceptionLoggingMiddleware, RequestLoggingMiddleware
 from app.database.db import Base, engine
@@ -87,9 +88,46 @@ async def lifespan(app: FastAPI):
 # -----------------------------
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Backend API for Deepfake Audio Detection using Room Impulse Response (RIR)",
+    description="""Backend API for Deepfake Audio Detection using Room Impulse Response (RIR).
+
+## Features
+- **Audio Upload**: Upload audio files (WAV, MP3, FLAC, OGG, M4A) for analysis
+- **Audio Analysis**: Comprehensive audio analysis including feature extraction, RIR analysis, breathing analysis, and cadence alignment
+- **Prediction**: AI-powered prediction using AST (Audio Spectrogram Transformer) model to detect deepfake audio
+- **History**: Track and manage all analysis and prediction history
+
+## Authentication
+Currently, this API does not require authentication. In production, implement API key or OAuth2 authentication.
+
+## Rate Limiting
+No rate limiting is currently implemented. Consider adding rate limiting for production deployments.
+
+## Support
+For issues or questions, please contact the development team.
+""",
     version=settings.APP_VERSION,
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    contact={
+        "name": "AcousticSpace Team",
+        "email": "support@acousticspace.example.com",
+    },
+    license_info={
+        "name": "Proprietary",
+        "url": "https://acousticspace.example.com/license",
+    },
+    servers=[
+        {
+            "url": "http://localhost:8000",
+            "description": "Development server",
+        },
+        {
+            "url": "http://0.0.0.0:8000",
+            "description": "Development server (all interfaces)",
+        },
+    ],
 )
 
 # -----------------------------
@@ -152,27 +190,58 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         },
     )
 
+
+@app.exception_handler(AcousticSpaceException)
+async def acoustic_space_exception_handler(request: Request, exc: AcousticSpaceException) -> JSONResponse:
+    """Handle AcousticSpace-specific exceptions with standardized responses."""
+    logger.error(
+        f"AcousticSpace exception: {exc.message}",
+        extra={
+            "path": request.url.path,
+            "status_code": exc.status_code,
+            "error_code": exc.error_code,
+            "detail": exc.detail,
+        }
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "message": exc.message,
+            "detail": exc.detail,
+            "error_code": exc.error_code,
+        },
+    )
+
 # -----------------------------
 # Health Check
 # -----------------------------
-@app.get("/", tags=["Health"])
+@app.get("/", tags=["Health"], summary="Health check", description="Returns the health status of the AcousticSpace API")
 async def health_check():
     """Enhanced health check endpoint with model status.
     
     This endpoint is optimized to return immediately without triggering
     any ML model loading or heavy imports.
+    
+    Returns
+    -------
+    dict
+        Health status information including API version and model status.
     """
     
     # Lightweight health check - no ML imports
     return {
-        "status": "running",
-        "project": "AcousticSpace",
-        "version": settings.APP_VERSION,
+        "success": True,
         "message": "Backend is running successfully.",
-        "model_loaded": False,
-        "device": "none",
-        "model": settings.MODEL_NAME,
-        "lazy_loading": True,
+        "data": {
+            "status": "running",
+            "project": "AcousticSpace",
+            "version": settings.APP_VERSION,
+            "model_loaded": False,
+            "device": "none",
+            "model": settings.MODEL_NAME,
+            "lazy_loading": True,
+        }
     }
 
 

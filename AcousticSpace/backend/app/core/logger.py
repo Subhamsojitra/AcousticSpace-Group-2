@@ -120,3 +120,31 @@ def log_prediction_finished(prediction: str, confidence: float, duration_seconds
 def log_upload_completed(uploaded_file: str, size_bytes: int):
     """Log that an upload was completed."""
     logger.info("Upload Completed", extra={"uploaded_file": uploaded_file, "size_bytes": size_bytes})
+
+
+def log_analysis_started(file_path: str, request_id: str = ""):
+    """Log that an analysis has started."""
+    logger.info("Analysis Started", extra={"file_path": file_path, "request_id": request_id})
+
+
+def log_analysis_finished(processing_time_seconds: float):
+    """Log that an analysis has finished."""
+    logger.info(
+        "Analysis Finished",
+        extra={"processing_time_seconds": round(processing_time_seconds, 3)},
+    )
+
+
+def log_file_deleted(filename: str, file_path: str):
+    """Log that a file was deleted."""
+    logger.info("File Deleted", extra={"filename": filename, "file_path": file_path})
+
+
+def log_history_cleared(deleted_count: int):
+    """Log that history was cleared."""
+    logger.info("History Cleared", extra={"deleted_count": deleted_count})
+
+
+def log_history_retrieved(count: int):
+    """Log that history was retrieved."""
+    logger.info("History Retrieved", extra={"count": count})

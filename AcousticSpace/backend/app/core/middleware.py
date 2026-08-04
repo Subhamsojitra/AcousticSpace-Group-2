@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.exceptions import AcousticSpaceException
 from app.core.logger import logger
 
 
@@ -70,6 +71,10 @@ class ExceptionLoggingMiddleware(BaseHTTPMiddleware):
             # Let FastAPI's exception handlers produce the standardized response
             # for known HTTP errors (raised in endpoints).
             raise
+        except AcousticSpaceException:
+            # Let FastAPI's exception handlers produce the standardized response
+            # for AcousticSpace-specific exceptions.
+            raise
         except Exception as exc:  # pragma: no cover
             logger.exception(
                 "unhandled_exception",
@@ -85,7 +90,7 @@ class ExceptionLoggingMiddleware(BaseHTTPMiddleware):
                 content={
                     "success": False,
                     "message": "Internal server error.",
-                    "detail": "Internal server error.",
+                    "detail": "An unexpected error occurred. Please contact support if the problem persists.",
                     "error_code": 500,
                 },
             )

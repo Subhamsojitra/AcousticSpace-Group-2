@@ -15,6 +15,7 @@ class UploadResponse(BaseModel):
 
     success: bool = True
     message: str
+    data: dict[str, Any] = Field(default_factory=dict, description="Upload metadata")
 
     file_name: str = Field(..., description="Generated unique filename")
     original_name: str = Field(..., description="Original filename provided by the client")
@@ -36,6 +37,7 @@ class AnalysisResponse(BaseModel):
 
     success: bool = True
     message: str
+    data: dict[str, Any] = Field(default_factory=dict, description="Analysis results")
 
     audio: AnalysisAudioInfo
     features: Dict[str, Any]
@@ -49,6 +51,7 @@ class PredictionResponse(BaseModel):
 
     success: bool = True
     message: str
+    data: dict[str, Any] = Field(default_factory=dict, description="Prediction results")
 
     prediction: Literal["Real", "Fake"]
     confidence: float
@@ -82,6 +85,8 @@ class HistoryListResponse(BaseModel):
     """Response returned by /api/history."""
 
     success: bool = True
+    message: str = "History retrieved successfully"
+    data: dict[str, Any] = Field(default_factory=dict, description="History metadata")
     count: int
     history: List[HistoryItem]
 
@@ -90,6 +95,8 @@ class HistorySingleResponse(BaseModel):
     """Response returned by /api/history/{history_id}."""
 
     success: bool = True
+    message: str = "History record retrieved successfully"
+    data: dict[str, Any] = Field(default_factory=dict, description="History metadata")
     history: HistoryItem
 
 
@@ -98,6 +105,7 @@ class DeleteResponse(BaseModel):
 
     success: bool = True
     message: str
+    data: dict[str, Any] = Field(default_factory=dict, description="Deletion metadata")
 
 
 class ErrorResponse(BaseModel):
