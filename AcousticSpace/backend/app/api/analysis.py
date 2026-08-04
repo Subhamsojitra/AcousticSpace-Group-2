@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.api.schemas import AnalysisResponse
-from app.core.exceptions import FileNotFoundError, ProcessingError
+from app.core.exceptions import AudioValidationError, FileNotFoundError, ProcessingError
 from app.core.logger import log_analysis_finished, log_analysis_started, log_error, log_info, log_warning
 from app.core.validation import InputValidator, validate_analysis_request
 from app.database.db import get_db
@@ -104,7 +104,7 @@ async def analyze_audio(
                     detail=error_msg
                 )
             else:
-                raise ProcessingError(
+                raise AudioValidationError(
                     message="Invalid request.",
                     detail=error_msg
                 )
@@ -253,7 +253,7 @@ async def analyze_audio(
             breathing_alignment=cadence_features,
         )
 
-    except (FileNotFoundError, ProcessingError):
+    except (FileNotFoundError, AudioValidationError, ProcessingError):
         raise
     except HTTPException:
         raise

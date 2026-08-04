@@ -25,7 +25,7 @@ from app.api.schemas import (
     HistorySingleResponse,
 )
 from app.core.exceptions import DatabaseError
-from app.core.logger import log_error, log_history_cleared, log_history_retrieved, log_info
+from app.core.logger import log_error, log_history_cleared, log_history_retrieved, log_info, log_warning
 from app.database.db import get_db
 from app.database.models import History
 
