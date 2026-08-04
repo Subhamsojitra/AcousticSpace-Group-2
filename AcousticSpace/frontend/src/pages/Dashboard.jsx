@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { 
   FileAudio, 
-  Shield
+  Shield,
+  Download
 } from 'lucide-react';
+import { generateAnalysisReport } from '../utils/reportGenerator';
 import AudioUpload from '../components/AudioUpload';
 import WaveformViewer from '../components/WaveformViewer';
 import TimelineProgress from '../components/TimelineProgress';
@@ -71,6 +73,7 @@ function Dashboard({ apiStatus = 'checking', backendVersion = null }) {
   const [stage, setStage] = useState('idle');
   const [pipelineMessage, setPipelineMessage] = useState('Awaiting Audio Upload');
   const [fileId, setFileId] = useState(null);
+  const [channels, setChannels] = useState(null);
 
   // Consolidated analysis results state
   const [pipelineResult, setPipelineResult] = useState({
@@ -120,6 +123,7 @@ function Dashboard({ apiStatus = 'checking', backendVersion = null }) {
     setPipelineError(null);
     clearPredictionState();
     setFileId(null);
+    setChannels(null);
   }, [setPipelineError, clearPredictionState]);
 
   // Reset pipeline state when the selected file changes or is removed
@@ -133,6 +137,7 @@ function Dashboard({ apiStatus = 'checking', backendVersion = null }) {
     const initializePipelineState = (message) => {
       clearPredictionState();
       setFileId(null);
+      setChannels(null);
       setStage('idle');
       setPipelineMessage(message);
     };
@@ -144,6 +149,49 @@ function Dashboard({ apiStatus = 'checking', backendVersion = null }) {
       initializePipelineState('Payload loaded. Ready to run forensic analysis.');
     }
   }, [file, setPipelineError, clearPredictionState]);
+
+  // Callback for metadata panel
+  const handleMetadataLoaded = useCallback((meta) => {
+    if (meta && meta.channels !== undefined) {
+      setChannels(meta.channels);
+    } else {
+      setChannels(null);
+    }
+  }, []);
+
+  // PDF report downloader
+  const handleDownloadReport = useCallback(() => {
+    if (stage !== 'completed' || !prediction || !file) return;
+
+    try {
+      addToast('Generating forensic PDF report...', 'info');
+
+      const reportData = {
+        reportId: `AS-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        generatedOn: new Date().toLocaleString(),
+        fileName: file.name,
+        analysisDate: timestamp || new Date().toLocaleString(),
+        verdict: prediction,
+        confidence: confidence,
+        duration: analysisInfo?.duration,
+        sampleRate: analysisInfo?.sample_rate,
+        channels: channels !== null ? (channels === 1 ? 'Mono (1 Ch)' : `Stereo (${channels} Ch)`) : null,
+        rirScore: analysisInfo?.rir_score,
+        breathingScore: analysisInfo?.breathing_score,
+        alignmentScore: analysisInfo?.alignment_score,
+        cadence: analysisInfo?.cadence,
+        backendVersion: backendVersion,
+        modelVersion: null,
+        processingTime: processingTime,
+      };
+
+      generateAnalysisReport(reportData);
+      addToast('Forensic report downloaded successfully.', 'success');
+    } catch (e) {
+      console.error(e);
+      addToast('Failed to generate PDF report.', 'error');
+    }
+  }, [stage, prediction, file, timestamp, confidence, analysisInfo, channels, backendVersion, processingTime, addToast]);
 
   // Handle component unmount cleanup
   useEffect(() => {
@@ -445,8 +493,22 @@ function Dashboard({ apiStatus = 'checking', backendVersion = null }) {
             })
           )}
 
+          {/* Download Report Button */}
+          <button
+            onClick={handleDownloadReport}
+            disabled={!(stage === 'completed' && prediction && file)}
+            className={`w-full py-3 px-4 rounded-2xl border font-mono text-xs tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
+              (stage === 'completed' && prediction && file)
+                ? 'bg-cyber-cyan/10 border-cyber-cyan/30 text-cyber-cyan hover:bg-cyber-cyan/20 hover:border-cyber-cyan/50 cursor-pointer shadow-[0_0_15px_rgba(5,180,210,0.1)]'
+                : 'bg-white/[0.01] border-cyber-border/20 text-text-secondary/40 cursor-not-allowed'
+            }`}
+          >
+            <Download size={14} />
+            Download Forensic Report
+          </button>
+
           {/* Technical Metadata Panel */}
-          <AudioMetadataPanel file={file} />
+          <AudioMetadataPanel file={file} onMetadataLoaded={handleMetadataLoaded} />
         </div>
 
       </div>

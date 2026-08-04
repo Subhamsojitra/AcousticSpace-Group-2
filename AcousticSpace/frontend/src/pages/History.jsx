@@ -330,11 +330,11 @@ const RecordDetailPanel = React.memo(({ record, onClose }) => {
         <div className="grid grid-cols-2 gap-4">
           <div className="p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-1">
             <span className="text-[8px] text-text-secondary uppercase tracking-wider block">Duration</span>
-            <span className="text-xs text-text-primary font-bold">{record.analysis?.duration ? `${Number(record.analysis.duration).toFixed(2)}s` : '—'}</span>
+            <span className="text-xs text-text-primary font-bold">{(record.duration !== null && record.duration !== undefined) ? `${Number(record.duration).toFixed(2)}s` : '—'}</span>
           </div>
           <div className="p-3 bg-white/[0.01] border border-cyber-border/40 rounded-xl space-y-1">
             <span className="text-[8px] text-text-secondary uppercase tracking-wider block">Sample Rate</span>
-            <span className="text-xs text-text-primary font-bold">{record.analysis?.sample_rate ? `${record.analysis.sample_rate} Hz` : '—'}</span>
+            <span className="text-xs text-text-primary font-bold">{record.sample_rate ? `${record.sample_rate} Hz` : '—'}</span>
           </div>
         </div>
 
