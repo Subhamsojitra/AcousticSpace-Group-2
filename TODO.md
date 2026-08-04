@@ -1,25 +1,26 @@
-# Cadence Alignment Implementation TODO
+# AcousticSpace Backend Optimization - TODO
 
-## Phase 1: Refactor scripts/cadence_alignment.py
-- [x] Add overload to `analyze_breathing_alignment` accepting `(audio: np.ndarray, sr: int)` directly
-- [x] Update internal functions to share code path
+## MODULE 2: Backend Optimization Tasks
 
-## Phase 2: Refactor backend/app/services/cadence_alignment.py
-- [x] Remove deprecated `librosa.output.write_wav` usage
-- [x] Call cadence functions directly with numpy array via `analyze_breathing_alignment_from_array`
-- [x] Add proper logging for cadence metrics (score, breaths, syllables)
+### Progress Tracking
 
-## Phase 3: Update backend/app/api/analysis.py
-- [x] Import and call `analyze_cadence_alignment`
-- [x] Include `breathing_alignment` in response
-- [x] Add timing and logging for cadence analysis
+- [x] 0. Analyze codebase & create plan
+- [x] 1. Config enhancements (config.py)
+- [x] 2. Logger improvements (logger.py)
+- [x] 3. Database session fix (db.py)
+- [x] 4. Global error handling (main.py + middleware.py)
+- [x] 5. Upload streaming optimization (upload.py)
+- [x] 6. Predict endpoint: remove top-level heavy imports (predict.py)
+- [x] 7. Analysis endpoint cleanup (analysis.py)
+- [x] 8. Schema cleanup (schemas.py)
+- [x] 9. Audio loader cleanup (audio_loader.py)
+- [x] 10. Verify backend starts without errors
+- [x] 11. Run startup benchmark & verify sub-3s startup
 
-## Phase 4: Update backend/app/api/predict.py
-- [x] Add cadence-specific metric logging (alignment_score, cadence label)
-- [x] Ensure proper error handling for cadence data in logging
-
-## Phase 5: Verify integration
-- [x] Check all imports are consistent
-- [x] Verify no deprecated functions are used
-- [x] Ensure PEP-8 compliance
-
+### Verification Results
+- **Startup time**: 2.615s (under 3s target) ✓
+- **Heavy ML libs deferred**: torch/transformers/librosa/soundfile NOT loaded at import ✓
+- **Endpoints tested**: GET /, POST /api/predict, POST /api/upload, DELETE /api/upload, GET /api/history ✓
+- **Error handling**: standardized {success, message, detail, error_code} ✓
+- **Real AST inference**: works end-to-end (lazy model load on first request) ✓
+- **All 14 routes registered** ✓

@@ -13,177 +13,325 @@ This module persists prediction results to DB history.
 from __future__ import annotations
 
 import time
-from typing import Optional
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.schemas import PredictionResponse
-from app.core.config import settings
-from app.core.logger import log_error, log_info, log_warning
+from app.core.exceptions import AudioValidationError, FileNotFoundError, ModelNotReadyError, ProcessingError
+from app.core.logger import log_error, log_info, log_prediction_finished, log_prediction_started, log_warning
+from app.core.validation import InputValidator, validate_prediction_request
 from app.database.db import get_db
 from app.database.models import History
 from app.services.audio_loader import load_audio
+from app.services.audio_validation import validate_audio_file
 from app.services.breathing_analysis import analyze_breathing
 from app.services.cadence_alignment import analyze_cadence_alignment
 from app.services.feature_extractor import extract_features
-from app.services.inference import predict_audio
 from app.services.mock_prediction import predict as mock_predict
 from app.services.preprocessing import preprocess_audio
 from app.services.rir_extractor import extract_rir_features
 
+# NOTE: Heavy ML libraries (torch, transformers, librosa) are intentionally NOT
+# imported at module level. They are imported lazily inside functions to keep
+# startup fast and defer model loading until the first prediction request.
 router = APIRouter()
 
 
 # ----------------------------------------------------
-# Lazy Model Loading (Singleton Pattern)
+# Lazy Model Loading (Production-Ready Singleton)
 # ----------------------------------------------------
-async def ensure_model_loaded(app):
+# NOTE: Import moved inside function to defer torch/transformers loading
+
+async def ensure_model_loaded():
     """
     Lazy-load AST model on first prediction request.
-    Uses singleton pattern - model loads once and is cached in app.state.
-    
-    Parameters
-    ----------
-    app : FastAPI
-        The FastAPI application instance.
+    Uses production-ready singleton pattern - model loads once and is cached.
     
     Returns
     -------
     bool
         True if model is ready, False if using mock predictions.
     """
-    # If model is already loaded or loading, return current status
-    if app.state.model_ready:
-        return True
-    
-    # If model is currently loading, wait and return
-    if app.state.model_loading:
-        return False
-    
-    # Mark as loading to prevent concurrent loads
-    app.state.model_loading = True
-    
     try:
-        import torch
-        from transformers import ASTForAudioClassification, ASTFeatureExtractor
+        # Lazy import to defer torch/transformers until first prediction
+        from app.ml.model_loader import get_model_loader, ModelLoadError
         
-        model_path = settings.AST_MODEL_PATH
-        log_info(f"Loading AST model from {model_path}...")
+        # Get the singleton model loader
+        model_loader = get_model_loader()
         
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        app.state.ast_model = ASTForAudioClassification.from_pretrained(model_path).to(device)
-        app.state.ast_model.eval()
-        app.state.feature_extractor = ASTFeatureExtractor.from_pretrained(model_path)
-        app.state.model_ready = True
+        # Check if model is already loaded
+        if model_loader.is_loaded():
+            return True
         
-        log_info(f"✓ AST model loaded successfully on {device}")
-        return True
+        # Load model (singleton ensures this happens only once)
+        success, message = model_loader.load_model()
         
-    except Exception as e:
+        if success:
+            log_info(f"✓ Model ready: {message}")
+            return True
+        else:
+            log_warning(f"Model loading returned false: {message}")
+            return False
+            
+    except ModelLoadError as e:
         log_warning(f"Failed to load AST model: {e}. Using mock predictions.")
-        app.state.ast_model = None
-        app.state.feature_extractor = None
-        app.state.model_ready = False
         return False
-    
-    finally:
-        app.state.model_loading = False
+    except Exception as e:
+        log_warning(f"Unexpected error loading model: {e}. Using mock predictions.")
+        return False
 
 
 class PredictionRequestModel(BaseModel):
-    file_path: str
+    """Request model for prediction endpoint."""
+    
+    file_path: str = Field(
+        ...,
+        description="Absolute or relative path to the audio file to analyze",
+        min_length=1,
+        max_length=500,
+        examples=["/path/to/audio.wav"]
+    )
 
 
-@router.post("/", response_model=PredictionResponse)
+@router.post(
+    "/",
+    response_model=PredictionResponse,
+    summary="Predict audio authenticity",
+    description="Analyze an audio file and predict whether it is Real or Fake using AST model and handcrafted features.",
+    responses={
+        400: {"description": "Invalid audio file or validation failed"},
+        404: {"description": "Audio file not found"},
+        500: {"description": "Prediction processing failed"},
+        503: {"description": "Model not ready"},
+    }
+)
 async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_db)) -> PredictionResponse:
-    """Predict whether an audio file is Real or Fake."""
+    """Predict whether an audio file is Real or Fake.
+    
+    Parameters
+    ----------
+    request : PredictionRequestModel
+        The prediction request containing the file path.
+    req : Request
+        The FastAPI request object.
+    db : Session
+        Database session dependency.
+        
+    Returns
+    -------
+    PredictionResponse
+        Prediction results including confidence score and analysis metadata.
+        
+    Raises
+    ------
+    FileNotFoundError
+        If the audio file does not exist.
+    AudioValidationError
+        If the audio file fails validation.
+    ModelNotReadyError
+        If the ML model is not available.
+    ProcessingError
+        If audio processing fails.
+    """
 
     start = time.perf_counter()
-    log_info(f"Prediction request received for: {request.file_path}")
+    request_id = req.headers.get("x-request-id", "")
+    log_prediction_started(request.file_path, request_id)
 
     try:
-        # Step 1: Load audio
+        # Step 0: Validate file path using centralized validation
+        is_valid, error_msg = validate_prediction_request(request.file_path)
+        if not is_valid:
+            if "does not exist" in error_msg:
+                raise FileNotFoundError(
+                    message="Audio file not found.",
+                    detail=error_msg
+                )
+            else:
+                raise AudioValidationError(
+                    message="Invalid request.",
+                    detail=error_msg
+                )
+        
+        file_path = Path(request.file_path)
+
+        # Step 1: Validate audio file
         t0 = time.perf_counter()
-        audio, sample_rate = load_audio(request.file_path)
+        is_valid, validation_info = validate_audio_file(request.file_path)
+        t_validation = time.perf_counter() - t0
+        
+        if not is_valid:
+            error_msg = validation_info.get("error", "Audio validation failed")
+            log_warning(f"Audio validation failed: {error_msg}")
+            raise AudioValidationError(
+                message=f"Invalid audio file: {error_msg}",
+                detail=validation_info.get("detail", "Audio file validation failed")
+            )
+        
+        log_info(f"Audio validation passed in {t_validation:.2f}s")
+        
+        # Step 2: Load audio
+        t0 = time.perf_counter()
+        try:
+            audio, sample_rate = load_audio(request.file_path)
+        except Exception as exc:
+            raise ProcessingError(
+                message="Failed to load audio file.",
+                detail=f"Error loading audio: {str(exc)}"
+            )
         t_load = time.perf_counter() - t0
         log_info(f"Audio loaded in {t_load:.2f}s")
 
-        # Step 2: Preprocess audio
+        # Step 3: Preprocess audio
         t0 = time.perf_counter()
-        processed_audio = preprocess_audio(audio, sample_rate)
+        try:
+            processed_audio = preprocess_audio(audio, sample_rate)
+        except Exception as exc:
+            raise ProcessingError(
+                message="Audio preprocessing failed.",
+                detail=f"Error during preprocessing: {str(exc)}"
+            )
         t_preprocess = time.perf_counter() - t0
         log_info(f"Preprocessing completed in {t_preprocess:.2f}s")
 
-        # Step 3: Extract features
+        # Step 4: Extract features
         t0 = time.perf_counter()
-        acoustic_features = extract_features(processed_audio, sample_rate)
+        try:
+            acoustic_features = extract_features(processed_audio, sample_rate)
+        except Exception as exc:
+            raise ProcessingError(
+                message="Feature extraction failed.",
+                detail=f"Error extracting features: {str(exc)}"
+            )
         t_features = time.perf_counter() - t0
         log_info(f"Feature extraction completed in {t_features:.2f}s")
 
-        # Step 4: Extract RIR features
+        # Step 5: Extract RIR features
         t0 = time.perf_counter()
-        rir_features = extract_rir_features(processed_audio, sample_rate)
+        try:
+            rir_features = extract_rir_features(processed_audio, sample_rate)
+        except Exception as exc:
+            raise ProcessingError(
+                message="RIR feature extraction failed.",
+                detail=f"Error extracting RIR features: {str(exc)}"
+            )
         t_rir = time.perf_counter() - t0
         log_info(f"RIR extraction completed in {t_rir:.2f}s")
 
-        # Step 5: Breathing analysis
+        # Step 6: Breathing analysis
         t0 = time.perf_counter()
-        breathing_features = analyze_breathing(processed_audio, sample_rate)
+        try:
+            breathing_features = analyze_breathing(processed_audio, sample_rate)
+        except Exception as exc:
+            raise ProcessingError(
+                message="Breathing analysis failed.",
+                detail=f"Error during breathing analysis: {str(exc)}"
+            )
         t_breathing = time.perf_counter() - t0
         log_info(f"Breathing analysis completed in {t_breathing:.2f}s")
 
-        # Step 5b: Cadence alignment analysis
+        # Step 7: Cadence alignment analysis
         t0 = time.perf_counter()
-        cadence_features = analyze_cadence_alignment(processed_audio, sample_rate)
+        try:
+            cadence_features = analyze_cadence_alignment(processed_audio, sample_rate)
+        except Exception as exc:
+            raise ProcessingError(
+                message="Cadence alignment analysis failed.",
+                detail=f"Error during cadence analysis: {str(exc)}"
+            )
         t_cadence = time.perf_counter() - t0
         log_info(f"Cadence alignment analysis completed in {t_cadence:.2f}s")
 
-        # Step 6: Lazy-load model if needed and generate prediction
+        # Step 8: Lazy-load model if needed and generate prediction
         t0 = time.perf_counter()
         processing_time_so_far = time.perf_counter() - start
         
         # Lazy-load model on first request
-        model_ready = await ensure_model_loaded(req.app)
+        model_ready = await ensure_model_loaded()
         
         # Check if real model is available
-        if model_ready and req.app.state.ast_model is not None:
-            # Use real AST model inference
-            import librosa
-            import torch
-            import numpy as np
-            
-            # Load audio for AST model (AST expects raw audio, not features)
-            audio_for_ast, _ = librosa.load(request.file_path, sr=16000, mono=True)
-            
-            # Prepare inputs for AST
-            inputs = req.app.state.feature_extractor(
-                audio_for_ast, 
-                sampling_rate=16000, 
-                return_tensors="pt"
-            )
-            input_values = inputs["input_values"].to(req.app.state.ast_model.device)
-            
-            # Run inference
-            with torch.no_grad():
-                outputs = req.app.state.ast_model(input_values)
-                probs = torch.softmax(outputs.logits, dim=1)[0]
-                confidence_score = probs[1].item()  # probability of class 1 = fake
-                prediction = "Fake" if confidence_score > 0.5 else "Real"
-                confidence = round(confidence_score * 100, 2)
-            
-            prediction_result = {
-                "prediction": prediction,
-                "confidence": confidence,
-                "rir_score": None,
-                "breathing_score": None,
-                "alignment_score": cadence_features.get("alignment_score"),
-                "cadence": cadence_features.get("cadence"),
-                "processing_time": f"{processing_time_so_far:.2f}s",
-                "status": "completed",
-            }
-        else:
-            # Use mock prediction
+        prediction_result = None
+        if model_ready:
+            # Use production-ready model loader
+            try:
+                from app.ml.model_loader import get_model_loader
+                model_loader = get_model_loader()
+                ast_model = model_loader.get_model()
+                feature_extractor = model_loader.get_feature_extractor()
+                device = model_loader.get_device()
+                
+                log_info(f"Model loader status - Ready: {model_ready}, Model: {ast_model is not None}, FeatureExtractor: {feature_extractor is not None}, Device: {device}")
+                
+                if ast_model is not None and feature_extractor is not None:
+                    # Use real AST model inference
+                    try:
+                        import torch
+                        import numpy as np
+                        
+                        # Reuse already-loaded audio - resample to 16kHz if needed
+                        # AST expects 16kHz mono audio
+                        if sample_rate != 16000:
+                            import librosa
+                            audio_for_ast = librosa.resample(processed_audio, orig_sr=sample_rate, target_sr=16000)
+                        else:
+                            audio_for_ast = processed_audio
+                        
+                        log_info(f"Using preprocessed audio for AST: shape={audio_for_ast.shape}, sr=16000, mono=True")
+                        
+                        # Prepare inputs for AST
+                        inputs = feature_extractor(
+                            audio_for_ast, 
+                            sampling_rate=16000, 
+                            return_tensors="pt"
+                        )
+                        input_values = inputs["input_values"].to(device)
+                        log_info(f"Input shape: {input_values.shape}, device: {device}")
+                        
+                        # Run inference (no gradients for inference)
+                        with torch.no_grad():
+                            outputs = ast_model(input_values)
+                            logits = outputs.logits
+                            log_info(f"Raw logits: {logits}")
+                            
+                            probs = torch.softmax(logits, dim=1)[0]
+                            log_info(f"Softmax probabilities: {probs}")
+                            log_info(f"  Class 0 (REAL): {probs[0].item():.6f} ({probs[0].item()*100:.2f}%)")
+                            log_info(f"  Class 1 (FAKE): {probs[1].item():.6f} ({probs[1].item()*100:.2f}%)")
+                            
+                            confidence_score = probs[1].item()  # probability of class 1 = fake
+                            predicted_class = torch.argmax(probs).item()
+                            log_info(f"Predicted class: {predicted_class} ({'FAKE' if predicted_class == 1 else 'REAL'})")
+                            
+                            prediction = "Fake" if confidence_score > 0.5 else "Real"
+                            confidence = round(confidence_score * 100, 2)
+                            
+                            log_info(f"Final prediction: {prediction}, confidence: {confidence}%")
+                        
+                        prediction_result = {
+                            "prediction": prediction,
+                            "confidence": confidence,
+                            "rir_score": None,
+                            "breathing_score": None,
+                            "alignment_score": cadence_features.get("alignment_score"),
+                            "cadence": cadence_features.get("cadence"),
+                            "processing_time": f"{processing_time_so_far:.2f}s",
+                            "status": "completed",
+                        }
+                    except Exception as e:
+                        log_warning(f"AST model inference failed: {e}. Falling back to mock predictions.")
+                        prediction_result = None
+                else:
+                    # Model loader returned True but model is None - use mock
+                    log_warning("Model loader returned True but model is None. Using mock predictions.")
+                    prediction_result = None
+            except Exception as e:
+                log_warning(f"Model loading error: {e}. Using mock predictions.")
+                prediction_result = None
+        
+        # Fallback to mock prediction if model is not available
+        if prediction_result is None:
             prediction_result = mock_predict(
                 acoustic_features=acoustic_features,
                 rir_features=rir_features,
@@ -207,7 +355,7 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
             f"Prediction: {t_prediction:.2f}s, Total: {processing_time:.2f}s"
         )
 
-        filename = __import__("pathlib").Path(request.file_path).name
+        filename = Path(request.file_path).name
 
         record = History(
             filename=filename,
@@ -225,6 +373,11 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
         # Log detailed prediction results including cadence metrics
         alignment_score = prediction_result.get("alignment_score", "N/A")
         cadence_label = prediction_result.get("cadence", "N/A")
+        log_prediction_finished(
+            prediction=prediction_result.get("prediction", "unknown"),
+            confidence=float(prediction_result.get("confidence", 0.0)),
+            duration_seconds=processing_time,
+        )
         log_info(
             f"Prediction completed: {prediction_result.get('prediction')} "
             f"(confidence={prediction_result.get('confidence')}%, "
@@ -234,6 +387,19 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
 
         return PredictionResponse(
             message="Prediction completed successfully.",
+            data={
+                "processing_time_seconds": processing_time,
+                "model_used": "AST" if model_ready else "mock",
+                "timing": {
+                    "load": round(t_load, 4),
+                    "preprocess": round(t_preprocess, 4),
+                    "features": round(t_features, 4),
+                    "rir": round(t_rir, 4),
+                    "breathing": round(t_breathing, 4),
+                    "cadence": round(t_cadence, 4),
+                    "prediction": round(t_prediction, 4),
+                }
+            },
             prediction=prediction_result["prediction"],
             confidence=float(prediction_result["confidence"]),
             analysis={
@@ -246,9 +412,14 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
             },
         )
 
+    except (FileNotFoundError, AudioValidationError, ModelNotReadyError, ProcessingError):
+        raise
     except HTTPException:
         raise
     except Exception as exc:
-        log_error(f"Prediction failed: {exc}")
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {exc}")
+        log_error(f"Prediction failed: {exc}", exc_info=True)
+        raise ProcessingError(
+            message="Prediction failed.",
+            detail=f"An unexpected error occurred during prediction: {str(exc)}"
+        )
 

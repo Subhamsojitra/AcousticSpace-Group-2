@@ -12,14 +12,52 @@ from typing import Iterable, Set
 from app.core.config import settings
 
 
-def allowed_extension(filename: str, allowed_extensions: Iterable[str] | None = None) -> bool:
-    """Check if a filename has an allowed extension."""
-
+def allowed_extension(filename: str, allowed_extensions: Iterable[str] | None = None, content_type: str | None = None) -> bool:
+    """
+    Check if a filename has an allowed extension.
+    
+    Parameters
+    ----------
+    filename : str
+        The filename to check.
+    allowed_extensions : Iterable[str], optional
+        Custom list of allowed extensions. If None, uses settings.ALLOWED_EXTENSIONS.
+    content_type : str, optional
+        MIME type reported by the client/browser for logging purposes.
+    
+    Returns
+    -------
+    bool
+        True if the extension is allowed, False otherwise.
+    """
     ext = Path(filename).suffix.lower()
     allowed = settings.ALLOWED_EXTENSIONS.split(",")
     if allowed_extensions is not None:
         allowed = list(allowed_extensions)
-    return ext in {e.strip().lower() for e in allowed if e.strip()}
+    
+    # Normalize allowed extensions to include dot
+    allowed_normalized = set()
+    for e in allowed:
+        e = e.strip().lower()
+        if e and not e.startswith('.'):
+            e = f'.{e}'
+        if e:
+            allowed_normalized.add(e)
+    
+    is_allowed = ext in allowed_normalized
+    
+    if not is_allowed:
+        from app.core.logger import log_error
+        log_error(
+            f"Unsupported file extension validation failed:\n"
+            f"  Filename: {filename}\n"
+            f"  Extension: {ext}\n"
+            f"  Suffix: {Path(filename).suffix}\n"
+            f"  Content-Type: {content_type}\n"
+            f"  Allowed extensions: {sorted(allowed_normalized)}"
+        )
+    
+    return is_allowed
 
 
 def validate_file_size(size_bytes: int, max_size_bytes: int | None = None) -> None:

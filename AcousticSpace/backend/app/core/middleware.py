@@ -13,10 +13,12 @@ import time
 import uuid
 from typing import Callable
 
-from fastapi import Request, Response
+from fastapi import HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.exceptions import AcousticSpaceException
 from app.core.logger import logger
 
 
@@ -30,12 +32,34 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         start = time.perf_counter()
+        response = None
+        exception_occurred = False
 
         try:
             response = await call_next(request)
-        finally:
+            return response
+        except Exception as exc:
+            # Log unhandled exceptions in the middleware chain
+            exception_occurred = True
             duration_ms = (time.perf_counter() - start) * 1000.0
-
+            logger.error(
+                "request_failed",
+                extra={
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "query": str(request.url.query),
+                    "duration_ms": round(duration_ms, 2),
+                    "client": request.client.host if request.client else None,
+                    "error": str(exc),
+                },
+            )
+            raise
+        finally:
+            # Log request completion (success or failure)
+            duration_ms = (time.perf_counter() - start) * 1000.0
+            status_code = getattr(response, "status_code", 500 if exception_occurred else None)
+            
             logger.info(
                 "request",
                 extra={
@@ -43,14 +67,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     "method": request.method,
                     "path": request.url.path,
                     "query": str(request.url.query),
-                    "status_code": getattr(response, "status_code", None),  # type: ignore[name-defined]
+                    "status_code": status_code,
                     "duration_ms": round(duration_ms, 2),
                     "client": request.client.host if request.client else None,
                 },
             )
 
         # Ensure request-id propagates to client
-        response.headers["x-request-id"] = request_id
+        if response:
+            response.headers["x-request-id"] = request_id
         return response
 
 
@@ -64,6 +89,14 @@ class ExceptionLoggingMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         try:
             return await call_next(request)
+        except (HTTPException, StarletteHTTPException):
+            # Let FastAPI's exception handlers produce the standardized response
+            # for known HTTP errors (raised in endpoints).
+            raise
+        except AcousticSpaceException:
+            # Let FastAPI's exception handlers produce the standardized response
+            # for AcousticSpace-specific exceptions.
+            raise
         except Exception as exc:  # pragma: no cover
             logger.exception(
                 "unhandled_exception",
@@ -78,7 +111,9 @@ class ExceptionLoggingMiddleware(BaseHTTPMiddleware):
                 status_code=500,
                 content={
                     "success": False,
-                    "detail": "Internal server error.",
+                    "message": "Internal server error.",
+                    "detail": "An unexpected error occurred. Please contact support if the problem persists.",
+                    "error_code": 500,
                 },
             )
 
