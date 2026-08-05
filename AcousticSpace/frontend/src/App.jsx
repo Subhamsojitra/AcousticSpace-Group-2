@@ -5,7 +5,6 @@ import Dashboard from './pages/Dashboard';
 import Results from './pages/Results';
 import LoadingState from './components/LoadingState';
 import ErrorState from "./components/ErrorState";
-import EmptyState from "./components/EmptyState";
 import { API_BASE_URL } from './config/apiConfig';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
@@ -34,7 +33,7 @@ function App() {
         if (!cancelled) {
           setApiStatus('online');
           setLatency(diff);
-          setBackendVersion(data.version || null);
+          setBackendVersion(data.data?.version || data.version || null);
         }
       } catch {
         if (!cancelled) {
@@ -75,7 +74,6 @@ function App() {
   <Route path="/results" element={<Results />} />
   <Route path="/loading" element={<LoadingState />} />
   <Route path="/error" element={<ErrorState />} />
-  <Route path="/empty" element={<EmptyState />} />
 
   {/* Friend's pages */}
   <Route

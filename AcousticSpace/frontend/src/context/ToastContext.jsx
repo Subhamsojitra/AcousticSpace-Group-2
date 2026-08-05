@@ -32,7 +32,7 @@ export function ToastProvider({ children }) {
         timerRef.current = setTimeout(() => {
           setToasts([]);
           timerRef.current = null;
-        }, 3000);
+        }, 4500);
       }, 150);
 
       return () => clearTimeout(processTimer);

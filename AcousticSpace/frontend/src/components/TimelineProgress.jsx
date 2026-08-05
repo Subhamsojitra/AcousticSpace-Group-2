@@ -1,41 +1,43 @@
 import React from 'react';
-import { CheckCircle2, Loader2, Circle, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 
-const STAGES = [
-  { id: 'upload', label: 'Audio Payload Upload', desc: 'Transmitting sample to forensic gateway' },
-  { id: 'validation', label: 'Audio Integrity Validation', desc: 'Verifying sample rate, channels, & size' },
-  { id: 'extraction', label: 'Feature Extraction', desc: 'Librosa spectrogram extraction' },
-  { id: 'rir', label: 'RIR Reflection Isolation', desc: 'Measuring Room Impulse Response' },
-  { id: 'breathing', label: 'Breathing Cadence Alignment', desc: 'Analyzing voice pause boundaries' },
-  { id: 'ast', label: 'AST Transformer Inference', desc: 'Spectral Transformer classification weights' },
-  { id: 'confidence', label: 'Confidence Score Computation', desc: 'Synthesizing probability boundaries' },
-  { id: 'verdict', label: 'Generate Integrity Verdict', desc: 'Signing final authenticity verdict' }
+const HORIZONTAL_STAGES = [
+  { id: 'upload', label: 'Upload' },
+  { id: 'validation', label: 'Validation' },
+  { id: 'preprocessing', label: 'Pre-processing' },
+  { id: 'rir', label: 'RIR Extraction' },
+  { id: 'breathing', label: 'Breathing' },
+  { id: 'prediction', label: 'Prediction' },
+  { id: 'completed', label: 'Completed' }
 ];
 
 function TimelineProgress({ stage, error = null }) {
-  // Map current execute stage to current index
+  // Map current execute stage to horizontal node index
   // stage: 'idle' | 'uploading' | 'extracting' | 'predicting' | 'completed' | 'failed'
   const getStageStates = () => {
     let activeIdx = -1;
     let failedIdx = -1;
     
-    if (stage === 'uploading') {
-      activeIdx = 0; // Upload
+    if (stage === 'idle') {
+      activeIdx = 1; // Validation is pending/active
+    } else if (stage === 'uploading') {
+      activeIdx = 0; // Upload is active
     } else if (stage === 'extracting') {
-      activeIdx = 2; // Feature Extraction is active. Upload (0) & Validation (1) are done.
+      activeIdx = 3; // RIR Extraction active. Upload (0), Validation (1), Pre-processing (2) done.
     } else if (stage === 'predicting') {
-      activeIdx = 5; // AST Transformer is active. Extraction (2), RIR (3), Breathing (4) are done.
+      activeIdx = 5; // Prediction active. Pre-processing, RIR, Breathing (4) done.
     } else if (stage === 'completed') {
-      activeIdx = STAGES.length; // all done
+      activeIdx = 6; // All completed
     } else if (stage === 'failed') {
-      failedIdx = 0;
+      failedIdx = 3; // Default failed point
       if (error) {
-        // Estimate failure points based on error messages or basic guess
-        if (error.toLowerCase().includes('upload')) failedIdx = 0;
-        else if (error.toLowerCase().includes('validation') || error.toLowerCase().includes('size')) failedIdx = 1;
-        else if (error.toLowerCase().includes('extract') || error.toLowerCase().includes('librosa')) failedIdx = 2;
-        else if (error.toLowerCase().includes('predict') || error.toLowerCase().includes('ast')) failedIdx = 5;
-        else failedIdx = 0;
+        const errLower = error.toLowerCase();
+        if (errLower.includes('upload')) failedIdx = 0;
+        else if (errLower.includes('validation') || errLower.includes('size')) failedIdx = 1;
+        else if (errLower.includes('extract') || errLower.includes('librosa')) failedIdx = 2;
+        else if (errLower.includes('rir')) failedIdx = 3;
+        else if (errLower.includes('breath')) failedIdx = 4;
+        else if (errLower.includes('predict') || errLower.includes('ast')) failedIdx = 5;
       }
     }
 
@@ -44,13 +46,33 @@ function TimelineProgress({ stage, error = null }) {
 
   const { activeIdx, failedIdx } = getStageStates();
 
-  return (
-    <div className="space-y-5 py-3">
-      <div className="relative pl-6 space-y-6">
-        {/* Vertical tracking line */}
-        <div className="absolute left-[9px] top-2 bottom-2 w-[1px] bg-cyber-border/40"></div>
+  const getProgressLineWidth = (actIdx, failIdx) => {
+    const totalSegments = HORIZONTAL_STAGES.length - 1;
+    let targetIdx = 0;
+    if (failIdx !== -1) {
+      targetIdx = failIdx;
+    } else if (actIdx !== -1) {
+      targetIdx = actIdx;
+    }
+    return (targetIdx / totalSegments) * 100;
+  };
 
-        {STAGES.map((item, index) => {
+  const lineWidthPct = getProgressLineWidth(activeIdx, failedIdx);
+
+  return (
+    <div className="w-full py-4 select-none overflow-x-auto no-scrollbar">
+      <div className="flex items-center justify-between min-w-[680px] relative px-6">
+        
+        {/* Background Line */}
+        <div className="absolute top-[16px] left-[55px] right-[55px] h-[2px] bg-cyber-border/30 z-0"></div>
+
+        {/* Active Progress Line */}
+        <div 
+          className="absolute top-[16px] left-[55px] h-[2px] bg-gradient-to-r from-cyber-cyan to-cyber-cyan transition-all duration-700 ease-out z-0"
+          style={{ width: `calc(${lineWidthPct}% - 10px)` }}
+        ></div>
+
+        {HORIZONTAL_STAGES.map((item, index) => {
           let state = 'pending'; // pending | active | completed | failed
           
           if (failedIdx !== -1) {
@@ -60,63 +82,43 @@ function TimelineProgress({ stage, error = null }) {
           } else if (activeIdx !== -1) {
             if (index < activeIdx) state = 'completed';
             else if (index === activeIdx) state = 'active';
-            // Custom detail: when activeIdx is 2 (extracting), stages 2, 3, and 4 are shown in progress sequentially.
-            // When activeIdx is 5 (predicting), stages 5 and 6 are active sequentially.
-            else if (activeIdx === 2 && (index === 3 || index === 4)) state = 'active';
-            else if (activeIdx === 5 && index === 6) state = 'active';
             else state = 'pending';
           }
 
-          let icon = <Circle size={14} className="text-zinc-700 bg-cyber-black shrink-0 z-10" />;
-          let textClass = 'text-text-secondary';
-          let bgClass = 'bg-transparent border-transparent';
+          // Render proper circle styles based on state
+          let circleContent = null;
+          let labelColor = 'text-text-secondary';
+          let borderGlow = 'border-cyber-border/40 bg-cyber-dark';
 
           if (state === 'completed') {
-            icon = <CheckCircle2 size={14} className="text-cyber-green bg-cyber-black shrink-0 z-10" />;
-            textClass = 'text-text-primary';
+            circleContent = <CheckCircle2 size={12} className="text-cyber-green" />;
+            labelColor = 'text-cyber-green';
+            borderGlow = 'border-cyber-green bg-cyber-green/5 shadow-[0_0_10px_rgba(48,209,88,0.15)]';
           } else if (state === 'active') {
-            icon = <Loader2 size={14} className="text-cyber-cyan animate-spin bg-cyber-black shrink-0 z-10" />;
-            textClass = 'text-text-primary font-medium';
-            bgClass = 'bg-white/5 border-cyber-border/60 shadow-sm';
+            circleContent = <div className="h-2 w-2 rounded-full bg-cyber-cyan animate-pulse"></div>;
+            labelColor = 'text-cyber-cyan font-semibold';
+            borderGlow = 'border-cyber-cyan bg-cyber-cyan/10 shadow-[0_0_15px_rgba(0,194,255,0.35)] animate-pulse';
           } else if (state === 'failed') {
-            icon = <AlertCircle size={14} className="text-cyber-rose bg-cyber-black shrink-0 z-10" />;
-            textClass = 'text-cyber-rose font-medium';
-            bgClass = 'bg-cyber-rose/5 border-cyber-rose/25';
+            circleContent = <AlertCircle size={12} className="text-cyber-rose animate-bounce" />;
+            labelColor = 'text-cyber-rose font-semibold';
+            borderGlow = 'border-cyber-rose bg-cyber-rose/5 shadow-[0_0_15px_rgba(255,69,58,0.25)]';
+          } else {
+            // Pending State
+            circleContent = <div className="h-1.5 w-1.5 rounded-full bg-zinc-700"></div>;
+            borderGlow = 'border-zinc-800 bg-cyber-dark';
           }
 
           return (
-            <div
-              key={item.id}
-              className={`flex items-start gap-4 p-4 px-5 rounded-2xl border transition-all duration-300 ${bgClass}`}
-            >
-              <div className="mt-0.5 relative flex items-center justify-center">
-                {icon}
+            <div key={item.id} className="flex flex-col items-center space-y-3 z-10 w-20 text-center relative">
+              {/* Step circle node */}
+              <div className={`h-8 w-8 rounded-full border flex items-center justify-center transition-all duration-500 ${borderGlow}`}>
+                {circleContent}
               </div>
-              <div className="space-y-1 min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className={`text-[10px] font-mono tracking-wider uppercase leading-none ${textClass}`}>
-                    {item.label}
-                  </h4>
-                  {state === 'active' && (
-                    <span className="text-[7px] font-mono text-cyber-cyan animate-pulse uppercase font-semibold">
-                      PROCESSING
-                    </span>
-                  )}
-                  {state === 'completed' && (
-                    <span className="text-[7px] font-mono text-cyber-green uppercase font-semibold">
-                      DONE
-                    </span>
-                  )}
-                  {state === 'failed' && (
-                    <span className="text-[7px] font-mono text-cyber-rose uppercase animate-pulse font-semibold">
-                      FAIL
-                    </span>
-                  )}
-                </div>
-                <p className="text-[9px] text-text-secondary font-mono leading-normal truncate mt-0.5">
-                  {item.desc}
-                </p>
-              </div>
+
+              {/* Step node label */}
+              <span className={`text-[9px] font-mono tracking-wider uppercase leading-tight block select-none ${labelColor}`}>
+                {item.label}
+              </span>
             </div>
           );
         })}
