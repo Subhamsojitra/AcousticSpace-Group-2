@@ -1,336 +1,166 @@
-# AcousticSpace — ML Module
+# AcousticSpace: Deepfake Detection via Room Impulse Response (RIR)
 
-Deepfake audio detection via acoustic-spatial mismatch (Room Impulse Response inconsistency), not just vocal artifacts.
+> A physics-informed deepfake audio detector that catches synthetic voices by analyzing room acoustics — not just standard biometrics.
 
-## Project Structure
-```
-acousticspace/
-├── scripts/
-│   ├── download_data.py       # Downloads/organizes ASVspoof + RIR data
-│   ├── augment.py             # Convolves speech with RIRs (matched/mismatched)
-│   ├── features.py            # Librosa spectrogram/MFCC extraction
-│   ├── dataset.py             # PyTorch Dataset + train/val/test split
-│   ├── train_baseline.py      # Trains CNN baseline
-│   ├── train_ast.py           # Fine-tunes AST on augmented data
-│   ├── breathing_detector.py  # Simple breathing/energy heuristic
-│   ├── evaluate.py            # EER, F1, accuracy, confusion matrix
-│   └── analyze.py             # Final combined inference function (for backend handoff)
-├── models/
-│   └── cnn_baseline.py        # CNN architecture
-├── results/                   # Saved metrics, comparison tables
-├── notebooks/                 # Mid-review / final-review summaries
-└── requirements.txt
-```
-
-## How to run (in Kaggle Notebook with GPU enabled)
-
-1. Attach ASVspoof dataset in Kaggle (Add Input → search `awsaf49/asvpoof-2019-dataset`)
-2. Download RIR data:
-   ```bash
-   wget https://www.openslr.org/resources/28/rirs_noises.zip
-   unzip rirs_noises.zip -d /kaggle/working/rirs_noises
-   ```
-3. Run scripts in order:
-   ```bash
-   python scripts/augment.py
-   python scripts/features.py
-   python scripts/train_baseline.py
-   python scripts/train_ast.py
-   python scripts/evaluate.py
-   ```
-4. Test the final function:
-   ```bash
-   python scripts/analyze.py --audio path/to/test_clip.wav
-   ```
-
-## Handoff to backend (FastAPI)
-Backend team should import `analyze()` from `scripts/analyze.py` and call it with an uploaded audio file path. It returns:
-```json
-{
-  "confidence_score": 0.87,
-  "prediction": "fake",
-  "reverb_mismatch_flag": true,
-  "breathing_flag": false
-}
-```
-
-## v2 additions: RT60/DRR/Clarity + real breathing detection
-
-**`scripts/acoustic_features.py`** — blind, single-channel estimation of RT60,
-a Direct-to-Reverberant Ratio (DRR) proxy, and a clarity proxy. These are
-estimated from naturally-occurring "free decay" regions (the reverberant
-tail right after speech cuts off) — not from a true measured impulse
-response, which isn't possible from a single reverberant recording alone.
-
-Tested against synthetic dry vs. reverberant clips:
-- **RT60**: correctly returns `None` (no measurable decay) for a dry clip
-  vs. a finite estimate for a reverberant one — good directional signal,
-  but the absolute value is not precisely calibrated (expected for a blind,
-  short-window method — treat it as relative/comparative evidence, not an
-  exact RT60 measurement).
-- **DRR proxy**: correctly moves in the expected direction (higher for the
-  dry clip, lower for the reverberant one).
-- **Clarity proxy**: works mechanically but the current formulation doesn't
-  cleanly correspond to a real C50 clarity index — treat this one as
-  experimental/lower-confidence output, and consider it a candidate for
-  further refinement rather than a finished feature.
-
-**`scripts/breathing_detector.py` (v2)** — replaces the v1 silence-gap
-heuristic with a combined energy + spectral-flatness VAD that distinguishes
-speech / breath / silence per frame, then groups breath frames into discrete
-events and checks inter-breath interval regularity. Verified against a
-synthetic clip with injected breath-noise bursts: correctly detected all 3
-injected events within ~10ms of their true timestamps.
-
-Both modules are still heuristics (not trained models) — a genuinely
-stronger and more defensible version of what the spec asks for, but not a
-literal RIR/RT60 measurement device or a supervised breath classifier. State
-this scope explicitly in your report.
-
-
-- **ASVspoof 2019** (real vs. fake speech): https://www.kaggle.com/datasets/awsaf49/asvpoof-2019-dataset
-- **OpenSLR SLR28** (Room Impulse Responses): https://www.openslr.org/28/
-
-
-
-# Backend (FastAPI)
-
-The backend of AcousticSpace is built using **FastAPI** and serves as the bridge between the frontend and the machine learning model. It provides REST APIs for audio upload, preprocessing, feature extraction, deepfake prediction, and prediction history while integrating seamlessly with the trained Audio Spectrogram Transformer (AST) model.
+[![Status](https://img.shields.io/badge/status-in%20development-yellow)]()
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)]()
+[![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20TypeScript-61DAFB)]()
+[![Backend](https://img.shields.io/badge/backend-FastAPI-009688)]()
 
 ---
 
-## Backend Features
+## Table of Contents
 
-- FastAPI REST API
-- Audio Upload & Validation
-- Feature Extraction Pipeline
-- Acoustic Feature Analysis
-- Breathing Pattern Analysis
-- AST Model Integration
-- Deepfake Prediction API
-- SQLite Database Support
-- Prediction History
-- Centralized Logging
-- Configuration Management
-- Swagger API Documentation
+- [Problem Statement](#problem-statement)
+- [Use Case](#use-case)
+- [Key Modules](#key-modules)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Week-wise Development Plan](#week-wise-development-plan)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Team](#team)
 
 ---
 
-## Backend Structure
+## Problem Statement
 
-```text
-backend/
-│
-├── app/
-│   ├── api/                 # REST API endpoints
-│   ├── core/                # Configuration and logging
-│   ├── database/            # Database models and connection
-│   ├── services/            # Business logic and ML inference
-│   ├── models/              # Response and request schemas
-│   ├── utils/               # Helper functions
-│   └── main.py              # FastAPI application
-│
-├── uploads/                 # Uploaded audio files
-├── extracted_features/      # Generated audio features
-├── saved_models/            # Local model storage
-├── logs/                    # Application logs
-└── requirements.txt
-```
+Current deepfake audio detectors focus primarily on vocal artifacts — robotic tones or unusual inflections. Modern generative AI easily bypasses these biometric checks, making standard audio fraud detection obsolete.
 
----
+**AcousticSpace** addresses this gap by verifying audio at the physics level rather than the voice level.
 
-# Backend Workflow
+## Use Case
+
+A security analyst at **Infocact** uploads a suspected deepfake audio clip. AcousticSpace mathematically isolates the background **Room Impulse Response (RIR)** from voice signal. If the acoustic reflection of the generated voice does not match the surrounding background environment, the clip is flagged as artificially generated — regardless of how convincing the voice itself sounds.
+
+## Key Modules
+
+| Module | Description |
+|---|---|
+| **Audio Processing Pipeline** (Python & Librosa) | Extracts low-level acoustic features, isolating RIR and environmental reverb |
+| **Transformer Classifier** (PyTorch & HuggingFace) | A fine-tuned Audio Spectrogram Transformer (AST) trained to detect mismatches between vocal cadence and spatial acoustics |
+| **API Gateway** (FastAPI) | Serves the ML model for low-latency, real-time inference |
+| **Analyst Dashboard** (React) | A frontend UI for uploading audio and visualizing waveform anomalies and confidence scores |
+
+## Architecture
 
 ```
-Frontend
-     │
-     ▼
-Upload Audio
-     │
-     ▼
-FastAPI Backend
-     │
-     ▼
-Audio Validation
-     │
-     ▼
-Feature Extraction
-     │
-     ▼
-Acoustic Feature Analysis
-     │
-     ▼
-Breathing Detection
-     │
-     ▼
-AST Model Inference
-     │
-     ▼
-Prediction Generation
-     │
-     ▼
-JSON Response
+                ┌───────────────────┐
+   Audio File   │   React Frontend   │
+  ─────────────▶│  (Upload + Dash)   │
+                └─────────┬──────────┘
+                          │ REST API
+                          ▼
+                ┌───────────────────┐
+                │   FastAPI Gateway  │
+                └─────────┬──────────┘
+                          ▼
+                ┌───────────────────┐
+                │  Librosa Pipeline  │
+                │ (Feature/RIR       │
+                │  Extraction)       │
+                └─────────┬──────────┘
+                          ▼
+                ┌───────────────────┐
+                │  AST Transformer   │
+                │  Classifier        │
+                │  (PyTorch/HF)      │
+                └─────────┬──────────┘
+                          ▼
+                Confidence Score + Flag
 ```
 
----
+## Tech Stack
 
-# API Endpoints
+**Backend & Machine Learning**
+- Python
+- PyTorch
+- HuggingFace Transformers (Audio Spectrogram Transformer)
+- Librosa (audio/spectral feature extraction)
+- FastAPI
 
-## Health Check
+**Frontend**
+- React
+- TypeScript
+- Wavesurfer.js (waveform visualization)
 
-```http
-GET /
-```
+**Deployment**
+- Docker
+- CI/CD Pipeline
 
-Returns the backend status.
+## Week-wise Development Plan
 
----
+| Week | Backend & ML | Frontend |
+|---|---|---|
+| **Week 1** | Build FastAPI server core setup. Curate dataset (e.g., ASVspoof). Develop Librosa pipeline to extract spectrograms and RIR features. | Build React app, audio upload component, and static dashboard layout. |
+| **Week 2** | Build baseline CNN/Transformer model to classify audio files based on extracted acoustic features. | Integrate audio waveform visualizers (e.g., Wavesurfer.js) to display uploaded clips. |
+| **Mid-Project Review** | Prove Librosa pipeline successfully isolates environmental noise from vocals. Baseline model accuracy check. | Frontend handles large audio file uploads and renders basic waveform graphs. |
+| **Week 3** | Fine-tune the Audio Spectrogram Transformer. Implement logic to check breathing/cadence alignment with speaker syllables. | Build the results panel, displaying model confidence scores and highlighting suspicious audio segments. |
+| **Week 4** | Deploy model via Docker. Optimize API inference latency. Construct CI/CD pipelines. | Refine and polish UI/UX. Add state management for tracking analysis history. |
+| **Final Project Review** | A robust deepfake detector that catches synthetic audio by analyzing physics rather than standard biometrics. | A complete, responsive analyst dashboard for interactive audio forensics. |
 
-## Upload Audio
+## Getting Started
 
-```http
-POST /upload
-```
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- (Optional) Docker & Docker Compose
 
-Uploads an audio file for analysis.
-
-Supported formats
-
-- WAV
-- MP3
-- FLAC
-- M4A
-
-Example Response
-
-```json
-{
-    "filename": "sample.wav",
-    "status": "uploaded"
-}
-```
-
----
-
-## Predict Deepfake
-
-```http
-POST /predict
-```
-
-Runs the complete inference pipeline and returns the prediction.
-
-Example Response
-
-```json
-{
-    "prediction": "Fake",
-    "confidence": 99.91,
-    "rir_score": 0.91,
-    "breathing_score": 0.87,
-    "processing_time": 2.4
-}
-```
-
----
-
-## Prediction History
-
-```http
-GET /history
-```
-
-Returns previously analyzed audio records.
-
----
-
-# Running the Backend
-
-## Create Virtual Environment
+### Backend Setup
 
 ```bash
+# clone the repo
+git clone https://github.com/Subhamsojitra/AcousticSpace-Group-2.git
+cd AcousticSpace-Group-2
+
+# create and activate a virtual environment
 python -m venv venv
-```
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-## Activate Environment
-
-### Windows
-
-```bash
-venv\Scripts\activate
-```
-
-### Linux / macOS
-
-```bash
-source venv/bin/activate
-```
-
----
-
-## Install Dependencies
-
-```bash
+# install dependencies
 pip install -r requirements.txt
-```
 
----
-
-## Run Backend
-
-```bash
-cd backend
+# run the FastAPI server
 uvicorn app.main:app --reload
 ```
 
-The backend will start on:
+### Frontend Setup
 
-```
-http://127.0.0.1:8000
-```
-
-Swagger Documentation:
-
-```
-http://127.0.0.1:8000/docs
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-ReDoc Documentation:
+The API will be available at `http://localhost:8000` and the dashboard at `http://localhost:5173` (adjust ports as configured in your project).
+
+## Project Structure
 
 ```
-http://127.0.0.1:8000/redoc
+AcousticSpace-Group-2/
+├── backend/
+│   ├── app/
+│   │   ├── main.py            # FastAPI entrypoint
+│   │   ├── models/            # AST classifier & inference logic
+│   │   ├── pipeline/          # Librosa feature/RIR extraction
+│   │   └── api/                # API routes
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/        # Upload, waveform, results panel
+│   │   └── pages/              # Dashboard views
+│   └── package.json
+├── data/                       # Dataset (e.g., ASVspoof) samples/scripts
+├── docs/                       # Diagrams, reports, review docs
+└── README.md
 ```
 
----
+> Note: adjust this tree to match your actual repo layout if it differs.
 
-# Backend Technologies
+## Team
 
-- Python 3.11
-- FastAPI
-- Uvicorn
-- SQLAlchemy
-- SQLite
-- Pydantic
-- Librosa
-- NumPy
-- PyTorch
-- Hugging Face Transformers
-- Logging
+Built by **Group 2** as part of Project 1, under **Infocact Solutions**.
 
----
+## License
 
-# Backend Responsibilities
-
-The backend is responsible for:
-
-- Accepting audio uploads from the frontend.
-- Validating uploaded audio files.
-- Performing audio preprocessing.
-- Extracting acoustic features.
-- Running breathing pattern analysis.
-- Loading the trained AST model.
-- Performing deepfake prediction.
-- Returning prediction results to the frontend.
-- Storing prediction history.
-- Providing REST APIs for frontend integration.
-- Managing logs and application configuration.
+Specify your project's license here (e.g., MIT).
