@@ -2,6 +2,10 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
+import Results from './pages/Results';
+import LoadingState from './components/LoadingState';
+import ErrorState from "./components/ErrorState";
+import EmptyState from "./components/EmptyState";
 import { API_BASE_URL } from './config/apiConfig';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
@@ -59,13 +63,29 @@ function App() {
                 Loading security console...
               </div>
             }>
-              <Routes>
-                <Route path="/" element={<Dashboard apiStatus={apiStatus} backendVersion={backendVersion} />} />
-                <Route path="/history" element={<History />} />
-                <Route path="/model-info" element={<ModelInfo apiStatus={apiStatus} latency={latency} />} />
-                <Route path="/pipeline-info" element={<PipelineInfo />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+             <Routes>
+  <Route
+    path="/"
+    element={<Dashboard apiStatus={apiStatus} backendVersion={backendVersion} />}
+  />
+
+  <Route path="/history" element={<History />} />
+
+  {/* Your pages */}
+  <Route path="/results" element={<Results />} />
+  <Route path="/loading" element={<LoadingState />} />
+  <Route path="/error" element={<ErrorState />} />
+  <Route path="/empty" element={<EmptyState />} />
+
+  {/* Friend's pages */}
+  <Route
+    path="/model-info"
+    element={<ModelInfo apiStatus={apiStatus} latency={latency} />}
+  />
+  <Route path="/pipeline-info" element={<PipelineInfo />} />
+
+  <Route path="*" element={<NotFound />} />
+</Routes>
             </Suspense>
           </DashboardLayout>
           <ToastContainer />
@@ -74,7 +94,6 @@ function App() {
     </ThemeProvider>
   );
 }
-
 export default App;
 
 
