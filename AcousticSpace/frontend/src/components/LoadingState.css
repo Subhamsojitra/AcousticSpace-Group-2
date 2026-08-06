@@ -62,3 +62,45 @@
 .loading-btn:hover {
   background: #0099cc;
 }
+
+/* Embedded Workspace Style rules */
+.loading-container.embedded {
+  min-height: auto;
+  height: 100%;
+  background: transparent;
+  padding: 10px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.loading-container.embedded h2 {
+  font-size: 1.1rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.loading-container.embedded p {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  margin-bottom: 12px;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.loading-container.embedded span {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.loading-container.embedded .spinner {
+  width: 44px;
+  height: 44px;
+  border-width: 3.5px;
+  border-color: var(--border);
+  border-top-color: var(--accent);
+  margin-bottom: 20px;
+}
