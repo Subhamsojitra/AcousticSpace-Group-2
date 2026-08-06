@@ -4,14 +4,14 @@ import { Shield, Activity, Volume2, ShieldCheck, AlertTriangle } from "lucide-re
 import { generateAnalysisReport } from "../utils/reportGenerator";
 import "./Results.css";
 
-const Results = ({ 
-  result: passedResult, 
-  onAnalyzeAnother, 
+const Results = ({
+  result: passedResult,
+  onAnalyzeAnother,
   onDownloadReport,
   _isDemo = true
 }) => {
   const navigate = useNavigate();
-  
+
   const result = {
     prediction: passedResult?.prediction || "Real",
     confidence: passedResult?.confidence !== undefined && passedResult?.confidence !== null ? passedResult.confidence : 94,
@@ -92,7 +92,7 @@ const Results = ({
   return (
     <div className={`results-container animate-scaleIn`}>
       <div className="result-card">
-        
+
         {/* Top: Verdict Badge */}
         <div className="verdict-badge-wrapper">
           <div className={`verdict-badge ${isReal ? 'real' : 'fake'}`}>
@@ -114,24 +114,24 @@ const Results = ({
         <div className="gauge-container">
           <div className="circular-gauge-wrapper">
             <svg className="w-28 h-28 transform -rotate-90">
-              <circle 
-                cx="56" 
-                cy="56" 
-                r={radius} 
-                className="stroke-current text-zinc-800" 
-                strokeWidth="5" 
-                fill="transparent" 
+              <circle
+                cx="56"
+                cy="56"
+                r={radius}
+                className="stroke-current text-zinc-800"
+                strokeWidth="5"
+                fill="transparent"
               />
-              <circle 
-                cx="56" 
-                cy="56" 
-                r={radius} 
-                className={`stroke-current ${isReal ? 'text-cyber-green' : 'text-cyber-rose'}`} 
-                strokeWidth="5" 
-                fill="transparent" 
-                strokeDasharray={circumference} 
-                strokeDashoffset={strokeDashoffset} 
-                strokeLinecap="round" 
+              <circle
+                cx="56"
+                cy="56"
+                r={radius}
+                className={`stroke-current ${isReal ? 'text-cyber-green' : 'text-cyber-rose'}`}
+                strokeWidth="5"
+                fill="transparent"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
                 style={{ transition: 'stroke-dashoffset 0.8s ease-in-out' }}
               />
             </svg>
@@ -175,14 +175,14 @@ const Results = ({
 
         {/* PDF Download Button & Re-analyze */}
         <div className="flex flex-col gap-2">
-          <button 
+          <button
             onClick={handleDownloadReport}
             className="download-report-btn"
           >
             Download Forensic Report
           </button>
-          
-          <button 
+
+          <button
             onClick={handleAnalyzeAnother}
             className="secondary-btn"
           >
