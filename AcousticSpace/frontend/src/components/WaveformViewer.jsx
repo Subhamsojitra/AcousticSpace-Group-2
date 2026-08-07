@@ -257,7 +257,7 @@ function WaveformViewer({
   };
 
   return (
-    <div className="bg-cyber-dark backdrop-blur-xl border border-cyber-border rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover-lift animate-fadeIn delay-100">
+    <div className="bg-cyber-dark border border-cyber-border rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover-lift animate-fadeIn delay-100">
       {/* Playback Reference */}
       {audioUrl && (
         <audio

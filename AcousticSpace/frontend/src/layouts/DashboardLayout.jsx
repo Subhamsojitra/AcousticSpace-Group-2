@@ -163,51 +163,6 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
             </div>
           </div>
         </div>
-
-        {/* Console Mode / Theme Settings */}
-        <div className="p-4 border-t border-cyber-border bg-white/[0.01] flex items-center justify-between">
-          <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest font-bold">
-            CONSOLE MODE
-          </span>
-          <div className="flex items-center gap-1.5 p-0.5 rounded-lg bg-white/5 border border-cyber-border/40 hover:border-cyber-border/80 transition-all duration-300">
-            <button
-              onClick={handleToggleTheme}
-              className="theme-toggle-btn h-7 px-3 rounded-md text-text-primary cursor-pointer flex items-center gap-2 relative overflow-hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyber-cyan/50 hover:bg-white/5 active:scale-95 transition-all duration-200"
-              title={`Theme: ${theme.toUpperCase()} (Click to cycle)`}
-              aria-label={`Switch theme (current: ${theme})`}
-            >
-              <div className="w-3.5 h-3.5 flex items-center justify-center relative shrink-0">
-                <Sun 
-                  size={13} 
-                  className="absolute transition-all duration-500 text-amber-500" 
-                  style={{
-                    opacity: theme === 'light' ? 1 : 0,
-                    transform: theme === 'light' ? 'rotate(0deg) scale(1)' : 'rotate(-90deg) scale(0)',
-                  }}
-                />
-                <Moon 
-                  size={13} 
-                  className="absolute transition-all duration-500 text-cyber-cyan" 
-                  style={{
-                    opacity: theme === 'dark' ? 1 : 0,
-                    transform: theme === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(90deg) scale(0)',
-                  }}
-                />
-                <Laptop 
-                  size={13} 
-                  className="absolute transition-all duration-500 text-zinc-400" 
-                  style={{
-                    opacity: theme === 'system' ? 1 : 0,
-                    transform: theme === 'system' ? 'scale(1)' : 'scale(0)',
-                  }}
-                />
-              </div>
-              <span className="text-[10px] font-mono font-medium text-text-secondary uppercase tracking-wider select-none">
-                {theme}
-              </span>
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -217,13 +172,43 @@ export default function DashboardLayout({ children, apiStatus = 'checking', late
           <div></div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2.5 px-3 py-1 rounded-md bg-white/5 border border-cyber-border">
-              <span className="text-[10px] font-mono text-text-secondary font-normal">
-                Threat Level:
-              </span>
-              <span className="text-[10px] font-mono font-bold text-cyber-rose uppercase tracking-wider">
-                Elevated
-              </span>
+            <div className="flex items-center gap-1.5 p-0.5 rounded-lg bg-white/5 border border-cyber-border/40 hover:border-cyber-border/80 transition-all duration-300">
+              <button
+                onClick={handleToggleTheme}
+                className="theme-toggle-btn h-7 px-3 rounded-md text-text-primary cursor-pointer flex items-center gap-2 relative overflow-hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyber-cyan/50 hover:bg-white/5 active:scale-95 transition-all duration-200"
+                title={`Theme: ${theme.toUpperCase()} (Click to cycle)`}
+                aria-label={`Switch theme (current: ${theme})`}
+              >
+                <div className="w-3.5 h-3.5 flex items-center justify-center relative shrink-0">
+                  <Sun 
+                    size={13} 
+                    className="absolute transition-all duration-500 text-amber-500" 
+                    style={{
+                      opacity: theme === 'light' ? 1 : 0,
+                      transform: theme === 'light' ? 'rotate(0deg) scale(1)' : 'rotate(-90deg) scale(0)',
+                    }}
+                  />
+                  <Moon 
+                    size={13} 
+                    className="absolute transition-all duration-500 text-cyber-cyan" 
+                    style={{
+                      opacity: theme === 'dark' ? 1 : 0,
+                      transform: theme === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(90deg) scale(0)',
+                    }}
+                  />
+                  <Laptop 
+                    size={13} 
+                    className="absolute transition-all duration-500 text-zinc-400" 
+                    style={{
+                      opacity: theme === 'system' ? 1 : 0,
+                      transform: theme === 'system' ? 'scale(1)' : 'scale(0)',
+                    }}
+                  />
+                </div>
+                <span className="text-[10px] font-mono font-medium text-text-secondary uppercase tracking-wider select-none">
+                  {theme}
+                </span>
+              </button>
             </div>
           </div>
         </header>
