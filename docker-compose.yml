@@ -1,0 +1,59 @@
+services:
+  backend:
+    build:
+      context: ./AcousticSpace/backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=True
+      - SECRET_KEY=acousticspace_docker_secret_key_2026
+      # Override database path to be in its own dedicated directory for clean volume mapping
+      - DATABASE_URL=sqlite:///backend/database/acousticspace.db
+      - UPLOAD_DIR=backend/uploads
+      - LOG_DIR=backend/logs
+      - FEATURE_DIR=backend/extracted_features
+      - MODEL_DIR=backend/saved_models
+      - RESULTS_DIR=backend/results
+      - DATABASE_DIR=backend/database
+      # Allow the containerized frontend to connect
+      - CORS_ALLOW_ORIGINS=http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    volumes:
+      # Named volumes for data persistence
+      - backend-database:/app/backend/database
+      - backend-uploads:/app/backend/uploads
+      - backend-logs:/app/backend/logs
+      - backend-features:/app/backend/extracted_features
+      - backend-models:/app/backend/saved_models
+      # Bind mount the large AST model directory read-only to save disk space
+      - ./AcousticSpace/results/ast_final_model:/app/results/ast_final_model:ro
+
+  frontend:
+    build:
+      context: ./AcousticSpace/frontend
+      dockerfile: Dockerfile
+      args:
+        # Bake the backend API base URL into the frontend build at build-time
+        - VITE_API_BASE_URL=http://localhost:8000
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  backend-database:
+  backend-uploads:
+  backend-logs:
+  backend-features:
+  backend-models:

@@ -1,9 +1,11 @@
 import React from 'react';
 import { CheckCircle, AlertCircle, Info, X, ShieldAlert } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function ToastContainer() {
   const { toasts, removeToast } = useToast();
+  const { resolvedTheme } = useTheme();
 
   if (toasts.length === 0) return null;
 
@@ -28,11 +30,15 @@ export default function ToastContainer() {
           glowClass = 'shadow-[0_8px_32px_rgba(245,158,11,0.2)]';
         }
 
+        const bgStyle = resolvedTheme === 'light'
+          ? { backgroundColor: 'rgba(255, 255, 255, 0.98)', boxShadow: 'var(--shadow)' }
+          : { backgroundColor: 'rgba(18, 18, 20, 0.96)', boxShadow: 'var(--shadow)' };
+
         return (
           <div
             key={toast.id}
             onClick={() => removeToast(toast.id)}
-            style={{ backgroundColor: 'rgba(18, 18, 20, 0.96)', boxShadow: 'var(--shadow)' }}
+            style={bgStyle}
             className={`pointer-events-auto border rounded-xl p-4 flex gap-3 items-center justify-between transition-all duration-300 animate-toast cursor-pointer hover:translate-y-[-1px] ${borderClass} ${glowClass}`}
             role="alert"
           >

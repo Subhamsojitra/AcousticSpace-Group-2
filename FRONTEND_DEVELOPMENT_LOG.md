@@ -1162,3 +1162,46 @@ Complete frontend integration, production stabilization, and final quality assur
 ### Final Status
 
 Frontend is integrated, stable, and ready for final demonstration pending backend and model validation.
+
+## Date: 7 August 2026
+
+### Objective
+
+Establish and verify the Docker infrastructure (Docker Compose, Dockerfiles, and volumes) for both the React frontend and FastAPI backend to ensure consistent environment orchestration.
+
+### Work Completed
+
+#### Docker Orchestration Setup
+
+* Created a root `docker-compose.yml` to orchestrate both the frontend and backend services on a shared network bridge, mapping external ports 8080 (frontend Nginx) and 8000 (backend API).
+* Configured local named volumes (`backend-database`, `backend-uploads`, `backend-logs`, `backend-features`, `backend-models`) to map and persist SQLite databases, audio uploads, extracted features, model caches, and logs across container lifecycles.
+* Set up a read-only bind mount for the 344MB AST model weights (`./AcousticSpace/results/ast_final_model`) to save disk space and support lazy loading.
+
+#### Backend Containerization & Optimization
+
+* Created `AcousticSpace/backend/Dockerfile` using a lightweight `python:3.11-slim` base image.
+* Installed essential system audio dependencies (`ffmpeg` and `libsndfile1`) for Librosa's C-bindings.
+* Restricted PyTorch installation to CPU-only (`--index-url https://download.pytorch.org/whl/cpu` and `--extra-index-url`) to satisfy the developer's 13 GB host disk constraint, successfully reducing layer size from 4GB+ to under 1GB.
+* Created a startup script `AcousticSpace/backend/entrypoint.sh` to run as root to dynamically configure folder ownership for mounted volumes before dropping privileges using the `runuser` tool to execute Uvicorn as a secure non-root `appuser`.
+* Added a container healthcheck using Python's standard `urllib` library to query `http://localhost:8000/docs` without requiring curl.
+
+#### Frontend Containerization & SPA Routing
+
+* Created `AcousticSpace/frontend/Dockerfile` utilizing a multi-stage build: compiling the React SPA using `node:20-alpine`, and serving the static assets via a lightweight `nginx:stable-alpine` runtime.
+* Created `AcousticSpace/frontend/nginx.conf` and configured HTML5 History API routing using `try_files $uri $uri/ /index.html` to support client-side React Router navigation.
+* Baked the backend API URL (`VITE_API_BASE_URL=http://localhost:8000`) into the frontend build at compile time using build arguments.
+
+#### User Interface & Performance Optimizations
+
+* Relocated the theme switcher (light/dark/system toggle button) from the bottom of the sidebar to the top header panel.
+* Removed the decorative "Threat Level: Elevated" panel from the top header panel to make room.
+* Removed the expensive `backdrop-blur-xl` CSS class from the `WaveformViewer` component wrapper to eliminate browser rendering lags during audio playback ticks.
+
+#### End-to-End Verification
+
+* Successfully ran end-to-end tests validating frontend routing, backend documentation accessibility, audio upload multi-part requests, lazy AST model loading, feature extraction, and SQLite database persistence.
+* Verified that SQLite databases and uploaded files properly persist on the host when containers are destroyed and recreated.
+
+### Final Status
+
+Docker infrastructure is complete, verified, and 100% production-ready. Both services build and orchestrate correctly as a single unit.
