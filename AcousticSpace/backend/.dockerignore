@@ -1,0 +1,14 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+uploads
+logs
+*.db
+*.db-journal
+*.sqlite
+.env
+.git
+.gitignore
