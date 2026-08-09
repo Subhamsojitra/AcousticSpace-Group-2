@@ -38,8 +38,9 @@ RUN groupadd -g 1000 appuser && \
     useradd -u 1000 -g appuser -m -s /bin/bash appuser && \
     chown -R appuser:appuser /app
 
-# Copy entrypoint script and make it executable
-RUN cp /app/backend/entrypoint.sh /entrypoint.sh && \
+# Copy entrypoint script, sanitize CRLF line endings, and make it executable
+RUN sed -i 's/\r$//' /app/backend/entrypoint.sh && \
+    cp /app/backend/entrypoint.sh /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 # Change working directory to backend folder so config.py's parents[3] resolves correctly to /app
