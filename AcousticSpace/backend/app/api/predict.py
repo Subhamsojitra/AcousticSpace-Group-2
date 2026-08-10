@@ -269,16 +269,25 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
                     try:
                         import torch
                         import numpy as np
+                        import librosa
                         
-                        # Reuse already-loaded audio - resample to 16kHz if needed
-                        # AST expects 16kHz mono audio
+                        # --------------------------------------------------------
+                        # BUG FIX: AST must receive the ORIGINAL untrimmed audio.
+                        # Other analysis components (features, RIR, breathing,
+                        # cadence) continue using preprocess_audio() output.
+                        # --------------------------------------------------------
+                        original_audio = np.asarray(audio, dtype=np.float32)
                         if sample_rate != 16000:
-                            import librosa
-                            audio_for_ast = librosa.resample(processed_audio, orig_sr=sample_rate, target_sr=16000)
+                            audio_for_ast = librosa.resample(
+                                original_audio, orig_sr=sample_rate, target_sr=16000
+                            )
                         else:
-                            audio_for_ast = processed_audio
+                            audio_for_ast = original_audio
                         
-                        log_info(f"Using preprocessed audio for AST: shape={audio_for_ast.shape}, sr=16000, mono=True")
+                        log_info(
+                            f"AST input: original untrimmed audio, "
+                            f"shape={audio_for_ast.shape}, sr=16000, mono=True"
+                        )
                         
                         # Prepare inputs for AST
                         inputs = feature_extractor(
@@ -300,11 +309,19 @@ async def predict(request: PredictionRequestModel, req: Request, db=Depends(get_
                             log_info(f"  Class 0 (REAL): {probs[0].item():.6f} ({probs[0].item()*100:.2f}%)")
                             log_info(f"  Class 1 (FAKE): {probs[1].item():.6f} ({probs[1].item()*100:.2f}%)")
                             
-                            confidence_score = probs[1].item()  # probability of class 1 = fake
+                            # --------------------------------------------------------
+                            # BUG FIX: confidence must be the probability of the
+                            # PREDICTED class, not always the FAKE probability.
+                            # --------------------------------------------------------
                             predicted_class = torch.argmax(probs).item()
-                            log_info(f"Predicted class: {predicted_class} ({'FAKE' if predicted_class == 1 else 'REAL'})")
+                            predicted_label = "FAKE" if predicted_class == 1 else "REAL"
+                            confidence_score = probs[predicted_class].item()
+                            log_info(
+                                f"Predicted class: {predicted_class} ({predicted_label}), "
+                                f"confidence (predicted-class prob): {confidence_score:.6f}"
+                            )
                             
-                            prediction = "Fake" if confidence_score > 0.5 else "Real"
+                            prediction = "Fake" if predicted_class == 1 else "Real"
                             confidence = round(confidence_score * 100, 2)
                             
                             log_info(f"Final prediction: {prediction}, confidence: {confidence}%")
